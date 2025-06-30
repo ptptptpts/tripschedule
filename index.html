@@ -206,8 +206,7 @@
             if (!firebaseConfig || Object.keys(firebaseConfig).length === 0) {
                 displayFirebaseError("공유 기능을 불러올 수 없습니다. 이 기능은 특정 환경에서만 지원됩니다.");
                 return;
-         
-            
+
             console.log("[Debug] Firebase config found. Initializing app...");
             try {
                 const app = initializeApp(firebaseConfig);
@@ -345,5 +344,3 @@
     </script>
 </body>
 </html>
-
-
