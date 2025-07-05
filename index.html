@@ -214,7 +214,8 @@
 
     <script>
     // =================================================================
-    // 3. DATA
+    // 3. DATA STORE
+    // 모든 텍스트, 설정, 초기 데이터를 한 곳에서 관리합니다.
     // =================================================================
     const APP_DATA = {
         uiText: {
@@ -232,11 +233,18 @@
             footerText: "가족의 모든 순간이 행복으로 채워지기를 바랍니다."
         },
         navigation: [ { id: 'prep', text: '준비' }, { id: 'expenses', text: '경비' }, { id: 'activities', text: '활동' }, { id: 'dining', text: '먹거리' }, { id: 'safety', text: '안전' }, { id: 'itinerary', text: '일정' } ],
+        exchangeRates: { PHP_TO_KRW: 23.5, PHP_TO_TWD: 0.55 },
         modalData: {
             etravel: {title: 'eTravel 등록 상세 안내',details: `<p>eTravel은 필리핀 입국 필수 전자 입국 신고서입니다. <strong>출발 72시간 전부터 등록</strong> 가능하며, QR코드를 받아야 합니다.</p><ul><li><strong>비용:</strong> <strong>완전 무료</strong>입니다. 결제를 요구하는 웹사이트는 사기입니다.</li><li><strong>등록처:</strong> 공식 웹사이트는 <a href="https://etravel.gov.ph" target="_blank" class="text-blue-600 hover:underline">etravel.gov.ph</a> 입니다.</li><li><strong>중요:</strong> 가족 구성원 모두(아기 포함) 개별 등록 후 QR코드를 휴대폰에 캡쳐해두세요.</li></ul>`,source: '필리핀 이민국(Bureau of Immigration) 공식 웹사이트'},
             payment: {title: '결제 전략 및 환전/팁 상세',details: `<h4>결제 수단</h4><ul><li><strong>신용카드 (약 85%):</strong> 리조트 내 모든 시설에서 사용 가능하여 편리하고 환전 수수료를 절약할 수 있습니다.</li><li><strong>페소 현금 (약 15%):</strong> 팁, 배달 음식, 소규모 상점 이용에 필요합니다.</li></ul><h4>환전</h4><ul><li><strong>대만에서:</strong> 타오위안 공항 또는 시중 은행에서 초기 경비(교통비, 첫날 팁 등)로 <strong>100~200 USD 상당의 페소</strong>만 환전하는 것을 추천합니다.</li><li><strong>세부에서:</strong> 현지 ATM에서 국제현금카드로 인출하는 것이 가장 효율적입니다. 리조트 환전은 환율이 불리합니다.</li></ul><h4>팁(Tip) 문화</h4><ul><li><strong>객실 청소:</strong> 매일 아침 베개 밑이나 테이블 위에 50~100페소</li><li><strong>포터(짐 운반):</strong> 짐 1개당 20~50페소</li><li><strong>레스토랑:</strong> 계산서에 봉사료(Service Charge) 포함 시 별도 팁 불필요.</li><li><strong>마사지사:</strong> 만족도에 따라 100페소 내외</li></ul>`,source: '주요 금융사 해외 결제 가이드, 세부 여행 커뮤니티'},
             checklist: {title: '준비물 상세 체크리스트',details: `<h4>부모님</h4><ul><li>의류: 여름 옷, 얇은 긴팔 가디건(냉방 대비), 수영복, 속옷, 잠옷</li><li>기타: 모자, 선글라스, 개인 세면도구, 화장품, 멀티 어댑터</li></ul><h4>아기</h4><ul><li>의류: 긴팔/반팔 래쉬가드, 아쿠아슈즈, 챙 넓은 모자, <strong>어드벤처 존용 긴팔/양말</strong></li><li>용품: 방수/일반 기저귀, 애착인형, 턱받이, 휴대용 유모차, 젖병 소독기(필요 시)</li></ul><h4>공통</h4><ul><li>필수: 여권, 왕복 항공권, eTravel QR코드, 신용카드, 페소 현금</li><li>건강: 성인/유아용 상비약(해열제, 지사제 등), 선크림, 알로에젤, 방수팩</li><li><strong>모기 기피제:</strong> 영유아에게는 <strong>이카리딘(Icaridin)</strong> 성분을 추천하며, DEET 성분은 주의가 필요합니다.</li></ul>`,source: '소아과 의사 여행 건강 권고, 육아 커뮤니티'},
             transport: {title: '공항 이동수단 상세 비교',details: `<p>리조트의 답변에 따르면, 현재 <strong>리조트 셔틀은 이용이 불가</strong>합니다. 대신 아래 프라이빗 차량 서비스를 예약해야 합니다.</p><ul class="list-disc list-inside my-4 space-y-2"><li><strong>프라이빗 세단 (3인승):</strong> 편도 1,600 페소</li><li><strong>프라이빗 밴 (7인승):</strong> 편도 2,300 페소</li></ul><p><strong>예약/문의:</strong> <a href="mailto:reservations.mac@shangri-la.com" class="text-blue-600 hover:underline">reservations.mac@shangri-la.com</a> 으로 회신하여 예약하세요.</p><p class="font-bold mt-4 text-red-600">※ 중요: 이메일 회신에 카시트 언급이 없었으므로, 예약 시 <strong>19개월 아기를 위한 카시트 제공 가능 여부를 반드시 재확인</strong>해야 합니다.</p><p class="mt-4">팁: 택시/그랩은 저렴하지만 카시트가 없어 아기 동반 시에는 프라이빗 차량이 훨씬 안전합니다.</p>`,source: '샹그릴라 막탄 예약과 이메일 (2025년 6월 30일)'},
+            facility_pool: {title: '어린이 수영장 & 아쿠아 플레이', details: '유아를 위해 특별히 설계된 수심이 얕은 수영장입니다. 그늘막이 설치되어 있고, 부드러운 바닥과 작은 미끄럼틀, 물이 뿜어져 나오는 분수대가 있어 아기가 안전하게 물놀이를 즐길 수 있습니다.', source: '샹그릴라 막탄 공식 웹사이트'},
+            facility_beach: {title: '프라이빗 비치', details: '리조트 투숙객 전용 해변으로, 파도가 거의 없어 아기가 모래놀이를 하거나 얕은 물에서 발을 담그기에 완벽합니다. 무료로 모래놀이 장난감을 빌릴 수 있고, 카바나에서 편안한 휴식이 가능합니다.', source: '샹그릴라 막탄 공식 웹사이트'},
+            facility_toddler: {title: '토들러 존', details: '3세 이하 영유아를 위한 전용 실내 놀이터입니다. 푹신한 매트가 깔려있고, 볼풀, 작은 클라이밍 기구 등 아기들의 발달 수준에 맞는 안전한 장난감들이 구비되어 있습니다. 보호자 동반 하에 이용 가능합니다.', source: '샹그릴라 막탄 공식 웹사이트'},
+            facility_adventure: {title: '어드벤처 존', details: '다양한 연령대의 아이들을 위한 대규모 실내 놀이 공간입니다. 거대한 슬라이드는 큰 아이들용이지만, 바로 옆에 유아들을 위한 별도의 놀이 공간이 마련되어 있습니다. 입장 시 안전을 위해 양말과 긴팔 옷 착용이 필수입니다.', source: '샹그릴라 막탄 공식 웹사이트'},
+            service_baby: {title: '아기용품 대여', details: '아기 침대, 아기 욕조, 젖병 소독기, 유모차 등 다양한 아기용품을 무료로 대여할 수 있습니다. 필요한 물품은 사전에 리조트에 이메일로 요청하는 것이 좋습니다.', source: '리조트 예약과 이메일'},
+            service_babysitter: {title: '베이비시터 서비스', details: '부부만의 시간을 위해 유료 베이비시터 서비스를 이용할 수 있습니다. 숙련된 직원이 아이를 돌봐주며, 로맨틱한 저녁 식사나 스파를 즐길 수 있는 기회를 제공합니다. 사전 예약은 필수입니다.', source: '리조트 예약과 이메일'},
             dining_tides: { title: '타이즈 (Tides) 상세', details: '<p>온 가족이 즐기기 좋은 인터내셔널 뷔페 레스토랑입니다. 아침, 점심, 저녁 모두 운영하며, 특히 키즈 섹션이 잘 되어 있어 아이들이 좋아합니다.</p>', source: '샹그릴라 막탄 공식 웹사이트' },
             dining_acqua: { title: '아쿠아 (Acqua) 상세', details: '<p>수영장과 바다를 보며 즐기는 이탈리안 레스토랑입니다. 타이즈보다 조용한 분위기에서 식사를 원할 때 추천합니다. 아침 식사도 제공됩니다.</p>', source: '샹그릴라 막탄 공식 웹사이트' },
             dining_breeze: { title: '부코 바 / 브리즈 상세', details: '<p>수영장과 해변가에 위치한 캐주얼 다이닝입니다. 햄버거, 샌드위치, 칵테일 등 가벼운 식사와 음료를 즐기기 좋습니다.</p>', source: '샹그릴라 막탄 공식 웹사이트' },
@@ -256,18 +264,22 @@
             transport: { type: 'bar', data: { labels: ["프라이빗 밴", "프라이빗 세단", "택시/그랩"], datasets: [{ label: "안전도", data: [10, 10, 5], backgroundColor: "#2C3E50" }, { label: "편의성", data: [10, 9, 8], backgroundColor: "#5DADE2" }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 10 } }, plugins: { legend: { position: 'bottom' } } } }
         },
         activities: {
-            facilities: [ { text: '어린이 수영장 & 아쿠아 플레이', icon: 'fa-swimming-pool' }, { text: '프라이빗 비치', icon: 'fa-umbrella-beach' }, { text: '토들러 존 (실내)', icon: 'fa-shapes' }, { text: '어드벤처 존 (실내)', icon: 'fa-child-reaching' }, { text: '물고기 먹이 주기', icon: 'fa-fish-fins' }, { text: '미니 골프', icon: 'fa-golf-ball-tee' } ],
+            facilities: [ 
+                { id: 'facility_pool', text: '어린이 수영장 & 아쿠아 플레이', icon: 'fa-swimming-pool' }, 
+                { id: 'facility_beach', text: '프라이빗 비치', icon: 'fa-umbrella-beach' },
+                { id: 'facility_toddler', text: '토들러 존 (실내)', icon: 'fa-shapes' },
+                { id: 'facility_adventure', text: '어드벤처 존 (실내)', icon: 'fa-child-reaching' }
+            ],
             services: {
                 baby: [
-                    { icon: 'fa-baby-carriage', text: '아기 침대 & 욕조', detail: '사전 요청 완료, 객실에 준비될 예정입니다.' },
-                    { icon: 'fa-utensils', text: '이유식 데우기', detail: '룸서비스 팀을 통해 요청 시 데워주는 서비스가 가능합니다.' },
-                    { icon: 'fa-snowflake', text: '음식 보관', detail: '객실 내 미니 냉장고를 이용하여 보관할 수 있습니다.' }
+                    { id: 'service_baby', icon: 'fa-baby-carriage', text: '아기용품 대여', detail: '아기 침대, 욕조, 유모차 등 대여 가능 (사전 문의 필수)' },
                 ],
                 babysitter: {
+                    id: 'service_babysitter',
                     title: '베이비시터 서비스',
                     details: [
                         '<strong>요금:</strong> 최초 2시간 1,000 PHP, 이후 시간당 500 PHP',
-                        '<strong>예약:</strong> 사전 예약 필수 (Guest Service Center 문의)',
+                        '<strong>예약:</strong> 사전 예약 필수',
                         '<strong>결제:</strong> 현금 또는 룸차지(3.5% 수수료) 가능'
                     ],
                     contact: 'guestservicecenter.mac@shangri-la.com'
@@ -276,6 +288,10 @@
         },
         dining: {
             resort: [ { id: 'dining_tides', title: '타이즈 (Tides)', desc: '가족 식사에 가장 무난한 인터내셔널 뷔페' }, { id: 'dining_acqua', title: '아쿠아 (Acqua)', desc: '조용한 분위기의 이탈리안 레스토랑' }, { id: 'dining_breeze', title: '부코 바 / 브리즈', desc: '수영장 옆 캐주얼 다이닝' } ],
+            delivery_static: {
+                restaurants: ['본촌 (Bonchon)', '분식 (Bunsik)', '다인 (Da-In)'],
+                marts: ['아씨 세시 한인마트', '부산마트 (카톡: pusanmart)']
+            },
             options: [
                 { value: '아무거나', text: '아무거나' }, { value: '필리핀 현지식', text: '필리핀 현지식' }, { value: '해산물', text: '해산물' }, { value: '한식', text: '한식' }, { value: '양식 (파스타, 스테이크)', text: '양식' }, { value: '피자 또는 햄버거', text: '피자/햄버거' }, { value: '맥주와 잘 어울리는 안주', text: '맥주 안주' }, { value: '케이크 또는 아이스크림 같은 디저트', text: '디저트' }, { value: '아이가 잘 먹는 키즈 프렌들리 메뉴', text: '키즈 프렌들리' }
             ]
@@ -350,9 +366,6 @@
                 const { expensesTitle } = APP_DATA.uiText;
                 const { fixed } = APP_DATA.expenses;
                 
-                let fixedTwdTotal = fixed.filter(e => e.currency === 'TWD').reduce((sum, e) => sum + e.amount, 0);
-                let fixedPhpTotal = fixed.filter(e => e.currency === 'PHP').reduce((sum, e) => sum + e.amount, 0);
-
                 container.innerHTML = `
                     <h3 class="text-3xl font-bold text-center mb-8">${expensesTitle}</h3>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -368,11 +381,11 @@
                             </div>
                         </div>
                         <div>
-                            <h4 class="text-xl font-bold text-brand-dark mb-4">추가 지출</h4>
+                            <h4 class="text-xl font-bold text-brand-dark mb-4">추가 지출 (PHP)</h4>
                             <div id="additional-expenses-list" class="space-y-2 mb-4"></div>
                             <div class="flex gap-2">
                                 <input type="text" id="expense-item" placeholder="항목 (예: 저녁 식사)" class="flex-grow p-2 border rounded-md">
-                                <input type="number" id="expense-amount" placeholder="금액 (PHP)" class="w-28 p-2 border rounded-md">
+                                <input type="number" id="expense-amount" placeholder="금액" class="w-28 p-2 border rounded-md">
                                 <button id="add-expense-btn" class="bg-brand-primary text-white px-4 rounded-md hover:bg-blue-600">추가</button>
                             </div>
                         </div>
@@ -380,10 +393,16 @@
                     <hr class="my-8">
                     <div id="total-expenses" class="text-center">
                         <h4 class="text-2xl font-bold">총 예상 경비</h4>
-                        <p class="text-3xl font-bold text-brand-accent mt-2" id="total-twd">TWD ${fixedTwdTotal.toLocaleString()}</p>
-                        <p class="text-3xl font-bold text-brand-accent mt-1" id="total-php">+ PHP ${fixedPhpTotal.toLocaleString()}</p>
+                        <div id="total-display" class="text-3xl font-bold text-brand-accent mt-2"></div>
+                        <div class="mt-4 space-x-2">
+                            <button class="currency-btn bg-gray-200 px-4 py-1 rounded-full text-sm" data-currency="PHP">PHP</button>
+                            <button class="currency-btn bg-gray-200 px-4 py-1 rounded-full text-sm" data-currency="TWD">TWD</button>
+                            <button class="currency-btn bg-gray-200 px-4 py-1 rounded-full text-sm" data-currency="KRW">KRW</button>
+                        </div>
+                        <p id="exchange-rate-info" class="text-xs text-gray-500 mt-3"></p>
                     </div>
                 `;
+                updateTotals('PHP'); // Initial render in PHP
             };
 
             const renderActivitiesSection = () => {
@@ -396,35 +415,29 @@
                     <h3 class="text-3xl font-bold text-center mb-8">${activitiesTitle}</h3>
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
                         <div class="card p-6">
-                            <h4 class="text-xl font-bold text-brand-primary flex justify-between items-center">리조트 시설</h4>
-                            <div id="activity-cards" class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                            <h4 class="text-xl font-bold text-brand-primary">리조트 시설</h4>
+                            <div class="mt-4 space-y-4">
                                 ${facilities.map(item => `
-                                    <div class="p-4 rounded-lg border bg-gray-50 flex items-center"><i class="fas ${item.icon} text-brand-primary w-6 mr-3"></i><h5 class="font-bold">${item.text}</h5></div>
+                                    <div class="p-4 rounded-lg border bg-gray-50">
+                                        <h5 class="font-bold flex justify-between items-center">${item.text} <span class="info-trigger" data-modal-id="${item.id}">i</span></h5>
+                                    </div>
                                 `).join('')}
                             </div>
                         </div>
                         <div class="card p-6">
-                            <h4 class="text-xl font-bold text-brand-primary flex justify-between items-center">리조트 서비스</h4>
+                            <h4 class="text-xl font-bold text-brand-primary">리조트 서비스</h4>
                             <div class="mt-4 space-y-4">
                                 ${services.baby.map(s => `
-                                    <div class="flex items-start">
-                                        <i class="fas ${s.icon} text-brand-primary w-6 mr-3 mt-1"></i>
-                                        <div>
-                                            <h5 class="font-bold">${s.text}</h5>
-                                            <p class="text-sm text-gray-600">${s.detail}</p>
-                                        </div>
+                                    <div class="p-4 rounded-lg border bg-gray-50">
+                                        <h5 class="font-bold flex justify-between items-center">${s.text} <span class="info-trigger" data-modal-id="${s.id}">i</span></h5>
                                     </div>
                                 `).join('')}
-                                <hr>
-                                <div class="flex items-start">
-                                    <i class="fas fa-hands-holding-child text-brand-primary w-6 mr-3 mt-1"></i>
-                                    <div>
-                                        <h5 class="font-bold">${services.babysitter.title}</h5>
-                                        <ul class="text-sm text-gray-600 list-disc list-inside">
-                                            ${services.babysitter.details.map(d => `<li>${d}</li>`).join('')}
-                                        </ul>
-                                        <p class="text-sm text-gray-600 mt-1"><strong>문의:</strong> <a href="mailto:${services.babysitter.contact}" class="text-blue-600 hover:underline">${services.babysitter.contact}</a></p>
-                                    </div>
+                                <div class="p-4 rounded-lg border bg-gray-50">
+                                    <h5 class="font-bold flex justify-between items-center">${services.babysitter.title} <span class="info-trigger" data-modal-id="${services.babysitter.id}">i</span></h5>
+                                    <ul class="text-sm text-gray-600 list-disc list-inside mt-2">
+                                        ${services.babysitter.details.map(d => `<li innerHTML="${d}">${d}</li>`).join('').replace(/<strong/g, '<strong').replace(/<\/strong/g, '</strong')}
+                                    </ul>
+                                    <p class="text-sm text-gray-600 mt-1"><strong>문의:</strong> <a href="mailto:${services.babysitter.contact}" class="text-blue-600 hover:underline">${services.babysitter.contact}</a></p>
                                 </div>
                             </div>
                         </div>
@@ -436,7 +449,7 @@
                 const container = document.getElementById('dining-content');
                 if (!container) return;
                 const { diningTitle } = APP_DATA.uiText;
-                const { resort, options } = APP_DATA.dining;
+                const { resort, options, delivery_static } = APP_DATA.dining;
                 const diningOptionsHtml = options.map(opt => `<option value="${opt.value}">${opt.text}</option>`).join('');
 
                 container.innerHTML = `
@@ -466,6 +479,13 @@
                     <!-- Delivery Tab -->
                     <div id="content-delivery" class="tab-content hidden">
                         <div>
+                            <h4 class="text-xl font-bold text-brand-dark mb-4">배달 정보</h4>
+                            <div class="space-y-4">
+                                <div><h5 class="font-bold">한식 배달 추천</h5><ul class="list-disc list-inside pl-2">${delivery_static.restaurants.map(item => `<li>${item}</li>`).join('')}</ul></div>
+                                <div><h5 class="font-bold mt-4">맥주 & 간식 배달</h5><ul class="list-disc list-inside pl-2">${delivery_static.marts.map(item => `<li>${item}</li>`).join('')}</ul></div>
+                                <div class="mt-4 bg-green-100 p-3 rounded-lg"><p class="font-bold text-center">⭐️ 배달 꿀팁 <span class="info-trigger" data-modal-id="delivery_tip">i</span></p></div>
+                            </div>
+                            <hr class="my-8">
                             <h4 class="text-xl font-bold text-brand-dark mb-4">✨ AI 배달 음식 추천</h4>
                             <p class="text-gray-600 mb-4">원하는 음식 종류를 선택하면, AI가 그랩푸드/푸드판다로 주문 가능한 메뉴를 추천해 드립니다.</p>
                             <div id="ai-delivery-controls" class="flex flex-wrap gap-4 items-center">
@@ -474,9 +494,6 @@
                             </div>
                             <div id="ai-delivery-loader" class="hidden"><div class="loader"></div></div>
                             <div id="ai-delivery-results" class="mt-6 space-y-4"></div>
-                            <div class="mt-8 bg-green-100 p-4 rounded-lg text-center">
-                                <p class="font-bold">⭐️ 배달 꿀팁 <span class="info-trigger" data-modal-id="delivery_tip">i</span></p>
-                            </div>
                         </div>
                     </div>
                 `;
@@ -516,8 +533,11 @@
                 container.innerHTML = `
                     <h3 class="text-3xl font-bold text-center mb-2">${itineraryTitle}</h3>
                     <p class="text-center text-gray-600 mb-4">${itinerarySubtitle}</p>
+                    <div class="mb-4">
+                        <textarea id="itinerary-concept" class="w-full p-2 border rounded-md" placeholder="원하는 여행 컨셉을 입력하세요 (예: 휴양과 물놀이 위주로, 좀 더 여유롭게)"></textarea>
+                    </div>
                     <div class="text-center mb-8">
-                        <button id="generate-itinerary-btn" class="ai-button">✨ AI 추천 일정 생성하기</button>
+                        <button id="generate-itinerary-btn" class="ai-button">✨ AI 맞춤 일정 생성하기</button>
                     </div>
                     <div id="ai-itinerary-loader" class="hidden"><div class="loader"></div></div>
                     <div id="itinerary-accordion" class="space-y-2">
@@ -582,10 +602,13 @@
                 button.disabled = true;
                 const loader = document.getElementById('ai-itinerary-loader');
                 const accordion = document.getElementById('itinerary-accordion');
+                const concept = document.getElementById('itinerary-concept').value.trim();
+                
                 accordion.innerHTML = '';
                 loader.classList.remove('hidden');
-
-                const prompt = "당신은 유능한 여행 플래너입니다. 필리핀 세부의 샹그릴라 막탄 리조트에 7월 14일부터 7월 18일까지 4박 5일간 머무는 19개월 아기를 동반한 3인 가족(성인 2, 유아 1)을 위한 편안하고 아기 친화적인 여행 일정을 짜주세요. 이 가족은 휴식, 가벼운 물놀이, 맛있는 음식을 즐깁니다. 이동 시간을 최소화하기 위해 리조트 내부 또는 매우 가까운 곳의 활동에 초점을 맞춰주세요. 각 날짜별로 짧은 테마와 2-3개의 활동 목록을 제공해주세요. 1일차 오전에 도착하고 5일차 오후에 출발하는 일정입니다. 응답은 반드시 JSON 객체로만, 그리고 모든 키와 값을 한국어로 작성해주세요.";
+                
+                const userRequest = concept ? `특히 다음 컨셉을 반영해주세요: "${concept}".` : "";
+                const prompt = `당신은 유능한 여행 플래너입니다. 필리핀 세부의 샹그릴라 막탄 리조트에 7월 14일부터 7월 18일까지 4박 5일간 머무는 19개월 아기를 동반한 3인 가족(성인 2, 유아 1)을 위한 편안하고 아기 친화적인 여행 일정을 짜주세요. 이 가족은 휴식, 가벼운 물놀이, 맛있는 음식을 즐깁니다. 이동 시간을 최소화하기 위해 리조트 내부 또는 매우 가까운 곳의 활동에 초점을 맞춰주세요. ${userRequest} 각 날짜별로 짧은 테마와 2-3개의 활동 목록을 제공해주세요. 1일차 오전에 도착하고 5일차 오후에 출발하는 일정입니다. 응답은 반드시 JSON 객체로만, 그리고 모든 키와 값을 한국어로 작성해주세요.`;
                 const schema = {
                     type: "ARRAY",
                     items: {
@@ -689,18 +712,41 @@
                 button.disabled = false;
             };
 
-            const updateTotals = () => {
+            const updateTotals = (targetCurrency) => {
                 const { fixed } = APP_DATA.expenses;
-                let fixedTwdTotal = fixed.filter(e => e.currency === 'TWD').reduce((sum, e) => sum + e.amount, 0);
-                let fixedPhpTotal = fixed.filter(e => e.currency === 'PHP').reduce((sum, e) => sum + e.amount, 0);
+                const { PHP_TO_KRW, PHP_TO_TWD } = APP_DATA.exchangeRates;
+
+                let twdTotal = fixed.filter(e => e.currency === 'TWD').reduce((sum, e) => sum + e.amount, 0);
+                let phpTotal = fixed.filter(e => e.currency === 'PHP').reduce((sum, e) => sum + e.amount, 0);
 
                 const additionalPhpTotal = Array.from(document.querySelectorAll('#additional-expenses-list .expense-item'))
                     .reduce((sum, item) => sum + parseFloat(item.dataset.amount), 0);
                 
-                const totalPhp = fixedPhpTotal + additionalPhpTotal;
+                phpTotal += additionalPhpTotal;
 
-                document.getElementById('total-twd').textContent = `TWD ${fixedTwdTotal.toLocaleString()}`;
-                document.getElementById('total-php').textContent = `+ PHP ${totalPhp.toLocaleString()}`;
+                let displayAmount = 0;
+                let displayCurrency = targetCurrency;
+
+                if (targetCurrency === 'PHP') {
+                    const twdInPhp = twdTotal / PHP_TO_TWD;
+                    displayAmount = phpTotal + twdInPhp;
+                } else if (targetCurrency === 'TWD') {
+                    const phpInTwd = phpTotal * PHP_TO_TWD;
+                    displayAmount = twdTotal + phpInTwd;
+                } else if (targetCurrency === 'KRW') {
+                    const twdInKrw = (twdTotal / PHP_TO_TWD) * PHP_TO_KRW;
+                    const phpInKrw = phpTotal * PHP_TO_KRW;
+                    displayAmount = twdInKrw + phpInKrw;
+                }
+                
+                document.getElementById('total-display').textContent = `${displayAmount.toLocaleString(undefined, {maximumFractionDigits: 0})} ${displayCurrency}`;
+                document.getElementById('exchange-rate-info').textContent = `* 기준 환율: 1 PHP ≈ ${PHP_TO_TWD} TWD, 1 PHP ≈ ${PHP_TO_KRW} KRW`;
+
+                document.querySelectorAll('.currency-btn').forEach(btn => {
+                    btn.classList.toggle('bg-brand-primary', btn.dataset.currency === targetCurrency);
+                    btn.classList.toggle('text-white', btn.dataset.currency === targetCurrency);
+                    btn.classList.toggle('bg-gray-200', btn.dataset.currency !== targetCurrency);
+                });
             };
 
             // --- Event Listeners Setup ---
@@ -763,8 +809,14 @@
                             list.appendChild(newExpense);
                             itemInput.value = '';
                             amountInput.value = '';
-                            updateTotals();
+                            updateTotals(document.querySelector('.currency-btn.bg-brand-primary').dataset.currency);
                         }
+                    }
+
+                    // Currency Button
+                    const currencyBtn = e.target.closest('.currency-btn');
+                    if (currencyBtn) {
+                        updateTotals(currencyBtn.dataset.currency);
                     }
                 });
 
