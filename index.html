@@ -3,344 +3,816 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>공유 가능한 인터랙티브 세부 가족 여행 가이드 (보안 오류 수정)</title>
-    <!-- Chosen Palette: Serene Coast -->
-    <!-- Application Structure Plan: The application is a task-oriented dashboard with a key improvement: a real-time collaborative checklist powered by Firebase. A unique 'Trip ID' is generated and used in a shareable URL, allowing multiple users to view and edit the same checklist simultaneously. This directly addresses the user's need for a shared planning tool. The structure remains user-centric (Preparation, Activities, etc.), but the 'Preparation' section is now a dynamic, multi-user component, significantly enhancing its utility for a couple planning a trip together. -->
-    <!-- Visualization & Content Choices: 
-        - Collaborative Checklist -> Goal: Organize/Collaborate -> Viz: Interactive HTML checklist with real-time updates -> Justification: Enables two or more users to manage a single source of truth for packing, solving the core user request. The visual feedback of seeing a partner's updates in real-time is highly engaging and practical. -> Method: Vanilla JS, Firebase Firestore, HTML/CSS.
-        - eTravel/Delivery Process -> Goal: Organize -> Viz: HTML/CSS Flowchart -> Justification: Simple, visual step-by-step guides remain the most intuitive method. -> Method: HTML/CSS.
-        - Payment/Transport Charts -> Goal: Inform/Compare -> Viz: Chart.js Doughnut/Bar Charts -> Justification: These static charts still provide the best at-a-glance comparison and breakdown of information. -> Library: Chart.js/Canvas.
-    -->
-    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <title>박태순님 가족 AI 세부 여행 가이드</title>
+
+    <!-- Libraries -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- =================================================================
+    // 1. DESIGN (CSS)
+    // ================================================================= -->
     <style>
-        body { font-family: 'Noto Sans KR', sans-serif; background-color: #F8F7F4; }
+        body { font-family: 'Noto Sans KR', sans-serif; background-color: #fcfcfc; }
         .text-brand-dark { color: #2C3E50; } .bg-brand-dark { background-color: #2C3E50; }
         .text-brand-primary { color: #3498DB; } .bg-brand-primary { background-color: #3498DB; }
-        .text-brand-secondary { color: #5DADE2; } .bg-brand-secondary { background-color: #5DADE2; }
         .text-brand-accent { color: #E67E22; } .bg-brand-accent { background-color: #E67E22; }
-        .bg-brand-light { background-color: #ECF0F1; }
-        .chart-container { position: relative; width: 100%; max-width: 500px; margin-left: auto; margin-right: auto; height: 280px; max-height: 350px; }
-        .nav-link.active { color: #E67E22; border-bottom-color: #E67E22; }
-        .tab-button.active { background-color: #3498DB; color: white; }
+        
+        .info-trigger {
+            cursor: pointer;
+            color: #3498DB;
+            background-color: transparent;
+            font-weight: bold;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-left: 8px;
+            font-size: 14px;
+            border: 1.5px solid #3498DB;
+            border-radius: 50%;
+            width: 22px;
+            height: 22px;
+            flex-shrink: 0;
+            transition: all 0.2s ease;
+        }
+        .info-trigger:hover {
+            background-color: #3498DB;
+            color: white;
+            transform: scale(1.1) rotate(360deg);
+        }
+
+        .modal-overlay { transition: opacity 0.3s ease; }
+        .modal-content { transition: transform 0.3s ease; }
         .checklist-item.checked label { text-decoration: line-through; color: #95a5a6; }
-        #share-url { -webkit-user-select: all; user-select: all; }
+        .tab-button.active { border-bottom-color: #3498DB; color: #3498DB; background-color: #ffffff; }
+        .tab-button { background-color: #ecf0f1; }
+        .accordion-header { cursor: pointer; }
+        .highlight {
+            background-color: #e0f2fe;
+            color: #0c4a6e;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 700;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 0.5rem 1rem;
+            align-items: center;
+        }
+        .info-grid i { color: #3b82f6; width: 20px; text-align: center; }
+        .info-grid dt { font-weight: 500; color: #4b5563; }
+        .info-grid dd { color: #1f2937; font-weight: 500; }
+        .card { background-color: white; border-radius: 0.75rem; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); }
+        .ai-button {
+            background: linear-gradient(45deg, #3498DB, #8E44AD);
+            color: white;
+            font-weight: bold;
+            padding: 0.75rem 1.5rem;
+            border-radius: 9999px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+        .ai-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+        .ai-button:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body class="text-brand-dark">
-
-    <header class="p-4 md:p-6 bg-white shadow-md sticky top-0 z-50">
+    <!-- =================================================================
+    // 2. STRUCTURE (HTML)
+    // ================================================================= -->
+    <header class="p-4 md:p-6 bg-white shadow-md sticky top-0 z-40">
         <div class="container mx-auto flex justify-between items-center">
-            <h1 class="text-xl md:text-2xl font-bold text-brand-primary">세부 가족여행 플래너</h1>
-            <nav id="main-nav" class="hidden md:flex space-x-6">
-                <a href="#prep" class="nav-link font-semibold pb-1 border-b-2 border-transparent hover:text-brand-accent">준비</a>
-                <a href="#activities" class="nav-link font-semibold pb-1 border-b-2 border-transparent hover:text-brand-accent">즐길거리</a>
-                <a href="#dining" class="nav-link font-semibold pb-1 border-b-2 border-transparent hover:text-brand-accent">먹거리</a>
-                <a href="#safety" class="nav-link font-semibold pb-1 border-b-2 border-transparent hover:text-brand-accent">안전</a>
-                <a href="#itinerary" class="nav-link font-semibold pb-1 border-b-2 border-transparent hover:text-brand-accent">일정</a>
-            </nav>
+            <h1 id="header-title" class="text-xl md:text-2xl font-bold text-brand-primary"></h1>
+            <nav id="main-nav" class="hidden md:flex space-x-6"></nav>
         </div>
     </header>
 
-    <div class="bg-brand-primary text-white text-center py-12 px-4">
-        <h2 class="text-3xl md:text-4xl font-bold">19개월 아기와 함께하는 샹그릴라 막탄</h2>
-        <p class="mt-2 text-lg">실시간으로 함께 준비하고, 완벽한 휴가를 만드세요.</p>
+    <div id="hero-section" class="bg-brand-primary text-white text-center py-12 px-4">
+        <h2 id="hero-title" class="text-3xl md:text-4xl font-bold"></h2>
+        <p id="hero-subtitle" class="mt-2 text-lg"></p>
     </div>
 
     <main class="container mx-auto p-4 md:p-8">
-
-        <section id="prep" class="mb-16 scroll-mt-24">
-            <h3 class="text-3xl font-bold text-center mb-2">여행 준비 대시보드</h3>
-            <p class="text-center text-gray-600 mb-8">체크리스트를 공유하고 함께 준비 상황을 확인하세요.</p>
-            
-            <div id="share-section" class="mb-8 bg-white p-6 rounded-lg shadow-lg">
-                <h4 class="text-xl font-bold mb-4 text-brand-primary">📋 이 여행 공유하기</h4>
-                <div id="share-loader">
-                    <p class="text-gray-500">공유 기능을 불러오는 중...</p>
-                </div>
-                <div id="share-content" class="hidden">
-                    <p class="text-gray-600 mb-4">아래 링크를 복사하여 아내분께 보내주세요. 링크를 통해 접속하면 체크리스트가 실시간으로 동기화됩니다.</p>
-                    <div class="flex items-center space-x-4 bg-gray-100 p-2 rounded-md">
-                        <input type="text" id="share-url" readonly class="w-full bg-transparent p-2 text-gray-700">
-                        <button id="copy-url-btn" class="bg-brand-accent text-white font-bold py-2 px-4 rounded hover:bg-orange-600 transition">복사</button>
+        <!-- Trip Summary Section -->
+        <section id="trip-summary" class="mb-12">
+             <div class="grid grid-cols-1 lg:grid-cols-5 gap-8">
+                <div class="lg:col-span-3 space-y-8">
+                    <div class="card p-6">
+                        <h4 class="text-xl font-bold text-brand-primary flex justify-between items-center">
+                            <span><i class="fas fa-plane-departure mr-2"></i>항공편 정보</span>
+                            <span class="highlight">예약번호: FXVIQ8</span>
+                        </h4>
+                        <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <h5 class="font-bold text-lg text-gray-700 mb-3 border-b pb-2">가는 편</h5>
+                                <dl class="info-grid">
+                                    <dt><i class="fas fa-plane-departure"></i>출발</dt><dd>타이베이 타오위안 (TPE) T2</dd>
+                                    <dt><i class="fas fa-plane-arrival"></i>도착</dt><dd>세부 막탄 (CEB) T2</dd>
+                                    <dt><i class="fas fa-plane"></i>항공사</dt><dd>에바항공 (BR281)</dd>
+                                    <dt><i class="fas fa-calendar-day"></i>날짜</dt><dd>2025년 7월 14일 (월)</dd>
+                                    <dt><i class="fas fa-clock"></i>시간</dt><dd>08:00 출발 → 10:50 도착</dd>
+                                </dl>
+                            </div>
+                            <div>
+                                <h5 class="font-bold text-lg text-gray-700 mb-3 border-b pb-2">오는 편</h5>
+                                <dl class="info-grid">
+                                    <dt><i class="fas fa-plane-departure"></i>출발</dt><dd>세부 막탄 (CEB) T2</dd>
+                                    <dt><i class="fas fa-plane-arrival"></i>도착</dt><dd>타이베이 타오위안 (TPE) T2</dd>
+                                    <dt><i class="fas fa-plane"></i>항공사</dt><dd>에바항공 (BR282)</dd>
+                                    <dt><i class="fas fa-calendar-day"></i>날짜</dt><dd>2025년 7월 18일 (금)</dd>
+                                    <dt><i class="fas fa-clock"></i>시간</dt><dd>12:15 출발 → 15:10 도착</dd>
+                                </dl>
+                            </div>
+                        </div>
                     </div>
-                    <p id="copy-feedback" class="text-sm text-green-600 mt-2 h-4"></p>
-                </div>
-                 <div id="share-fallback" class="hidden">
-                    <p class="text-gray-600 mb-2">플래너가 생성되었습니다! 이 링크를 공유하려면 아래 ID를 복사하여 현재 페이지 주소 끝에 <b>?tripId=</b> 와 함께 붙여넣어주세요.</p>
-                    <div id="fallback-trip-id" class="w-full bg-gray-100 p-2 rounded-md font-mono text-center text-lg cursor-pointer"></div>
-                     <p id="fallback-copy-feedback" class="text-sm text-green-600 mt-2 h-4"></p>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div class="bg-white p-6 rounded-lg shadow-lg lg:col-span-2">
-                    <h4 class="text-xl font-bold mb-4 text-brand-primary">실시간 공유 체크리스트</h4>
-                    <div id="checklist-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-                        <div id="checklist-loader" class="col-span-full text-center p-8">
-                             <p class="text-gray-500">체크리스트를 불러오는 중...</p>
+                    <div class="card p-6">
+                        <h4 class="text-xl font-bold text-brand-primary flex justify-between items-center">
+                            <span><i class="fas fa-hotel mr-2"></i>숙소 정보</span>
+                            <span class="highlight">예약번호: 12392712631</span>
+                        </h4>
+                        <div class="mt-4">
+                            <h5 class="font-bold text-xl text-gray-800">샹그릴라 막탄, 세부</h5>
+                            <dl class="info-grid mt-3">
+                                <dt><i class="fas fa-calendar-check"></i>체크인</dt><dd>2025년 7월 14일 (월)</dd>
+                                <dt><i class="fas fa-calendar-times"></i>체크아웃</dt><dd>2025년 7월 18일 (금)</dd>
+                                <dt><i class="fas fa-bed"></i>객실</dt><dd>메인 윙 디럭스 룸 킹</dd>
+                                <dt><i class="fas fa-credit-card"></i>상태</dt><dd class="text-green-600 font-bold">결제 완료</dd>
+                            </dl>
                         </div>
                     </div>
                 </div>
-
-                <div class="bg-white p-6 rounded-lg shadow-lg">
-                    <h4 class="text-xl font-bold mb-4 text-brand-primary">필수 서류: eTravel 등록 절차</h4>
-                    <div class="space-y-4 md:space-y-0 md:flex md:items-center md:justify-between text-center">
-                        <div class="flex-1"><div class="text-4xl">📄</div><p class="font-bold mt-2">1. 온라인 등록</p><p class="text-sm text-gray-500">출발 72시간 전<br>etravel.gov.ph (무료)</p></div>
-                        <div class="text-2xl text-brand-secondary hidden md:block mx-4">→</div><div class="text-2xl text-brand-secondary md:hidden mx-auto transform rotate-90">↓</div>
-                        <div class="flex-1"><div class="text-4xl">📱</div><p class="font-bold mt-2">2. QR 코드 저장</p><p class="text-sm text-gray-500">이메일 확인 후<br>휴대폰에 캡쳐</p></div>
-                        <div class="text-2xl text-brand-secondary hidden md:block mx-4">→</div><div class="text-2xl text-brand-secondary md:hidden mx-auto transform rotate-90">↓</div>
-                        <div class="flex-1"><div class="text-4xl">🛂</div><p class="font-bold mt-2">3. 입국 심사</p><p class="text-sm text-gray-500">여권과 함께 제시</p></div>
-                    </div>
-                </div>
-
-                <div class="bg-white p-6 rounded-lg shadow-lg">
-                    <h4 class="text-xl font-bold mb-4 text-brand-primary">결제 전략: 카드와 현금의 황금 비율</h4>
-                    <div class="chart-container" style="height:250px;"><canvas id="financeChart"></canvas></div>
-                </div>
-            </div>
-        </section>
-
-        <section id="activities" class="mb-16 scroll-mt-24">
-             <h3 class="text-3xl font-bold text-center mb-2">리조트 즐길거리 탐험</h3>
-             <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-                <div class="bg-white p-6 rounded-lg shadow-lg">
-                    <h4 class="text-xl font-bold mb-4 text-brand-primary">안전한 이동: 공항 교통편 비교</h4>
-                    <div class="chart-container"><canvas id="transportChart"></canvas></div>
-                </div>
-                <div class="bg-white p-6 rounded-lg shadow-lg">
-                    <h4 class="text-xl font-bold mb-4 text-brand-primary">아기 맞춤 시설 찾기</h4>
-                     <div id="activity-filters" class="flex flex-wrap justify-center gap-2 mb-6">
-                        <button data-filter="all" class="filter-btn px-4 py-2 rounded-full text-sm font-semibold">전체</button>
-                        <button data-filter="water" class="filter-btn px-4 py-2 rounded-full text-sm font-semibold">💧 물놀이</button>
-                        <button data-filter="play" class="filter-btn px-4 py-2 rounded-full text-sm font-semibold">🧸 실내놀이</button>
-                        <button data-filter="experience" class="filter-btn px-4 py-2 rounded-full text-sm font-semibold">🐠 체험</button>
-                    </div>
-                    <div id="activity-cards" class="grid grid-cols-1 sm:grid-cols-2 gap-4"></div>
-                </div>
-            </div>
-        </section>
-
-        <section id="dining" class="mb-16 scroll-mt-24">
-            <h3 class="text-3xl font-bold text-center mb-2">먹거리 가이드</h3>
-            <div class="bg-white p-6 rounded-lg shadow-lg">
-                <div class="flex justify-center border-b mb-6">
-                    <button id="tab-resort" class="tab-button flex-1 py-2 font-semibold text-lg border-b-4 border-transparent">리조트</button>
-                    <button id="tab-delivery" class="tab-button flex-1 py-2 font-semibold text-lg border-b-4 border-transparent">배달음식</button>
-                </div>
-                <div id="content-resort" class="tab-content"></div>
-                <div id="content-delivery" class="tab-content hidden"></div>
-            </div>
-        </section>
-
-        <section id="safety" class="mb-16 scroll-mt-24">
-            <h3 class="text-3xl font-bold text-center mb-2">건강 & 안전 허브</h3>
-             <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div class="bg-white p-6 rounded-lg shadow-lg">
-                    <h4 class="text-xl font-bold mb-4 text-brand-primary">아기 건강 3대 수칙</h4>
-                    <div class="flex justify-around text-center mt-4">
-                        <div><div class="text-5xl mb-2">💧</div><h5 class="font-bold">안전한 물</h5></div>
-                        <div><div class="text-5xl mb-2">☀️</div><h5 class="font-bold">자외선 차단</h5></div>
-                        <div><div class="text-5xl mb-2">🦟</div><h5 class="font-bold">벌레 퇴치</h5></div>
-                    </div>
-                </div>
-                 <div class="bg-white p-6 rounded-lg shadow-lg">
-                    <h4 class="text-xl font-bold mb-4 text-brand-primary">응급 의료 지원</h4>
+                <div class="lg:col-span-2 card p-6">
+                    <h4 class="text-xl font-bold text-brand-primary mb-4"><i class="fas fa-users mr-2"></i>우리 가족</h4>
                     <div class="space-y-4">
-                        <div class="bg-red-100 p-3 rounded-lg text-center"><p class="text-red-700 font-semibold">필리핀 긴급전화: <span class="font-bold text-2xl ml-2">911</span></p></div>
-                        <div class="bg-blue-50 p-3 rounded-lg"><p class="font-bold">리조트 내 의료 지원</p></div>
-                        <div class="bg-blue-50 p-3 rounded-lg"><p class="font-bold">가까운 병원</p></div>
+                        <div class="flex items-center p-3 bg-blue-50 rounded-lg">
+                            <i class="fas fa-male text-blue-500 text-2xl w-8"></i>
+                            <div class="ml-3"><p class="font-bold">아빠: 박태순 (PARK TAESOON)</p></div>
+                        </div>
+                        <div class="flex items-center p-3 bg-pink-50 rounded-lg">
+                            <i class="fas fa-female text-pink-500 text-2xl w-8"></i>
+                            <div class="ml-3"><p class="font-bold">엄마: 이주연 (LEE JUYEON)</p></div>
+                        </div>
+                        <div class="flex items-center p-3 bg-yellow-50 rounded-lg">
+                            <i class="fas fa-baby text-yellow-500 text-2xl w-8"></i>
+                            <div class="ml-3"><p class="font-bold">아기: 박혜나 (PARK HANNAH)</p><p class="text-sm text-gray-600">여행 시 19개월</p></div>
+                        </div>
                     </div>
                 </div>
             </div>
         </section>
 
-        <section id="itinerary" class="scroll-mt-24">
-            <h3 class="text-3xl font-bold text-center mb-2">4박 5일 추천 일정</h3>
-            <div id="itinerary-accordion" class="space-y-4"></div>
-        </section>
+        <!-- Dynamic Content Sections -->
+        <section id="prep" class="mb-16 scroll-mt-24"><div id="prep-content" class="card p-6"></div></section>
+        <section id="expenses" class="mb-16 scroll-mt-24"><div id="expenses-content" class="card p-6"></div></section>
+        <section id="activities" class="mb-16 scroll-mt-24"><div id="activities-content"></div></section>
+        <section id="dining" class="mb-16 scroll-mt-24"><div id="dining-content" class="card p-6"></div></section>
+        <section id="safety" class="mb-16 scroll-mt-24"><div id="safety-content" class="card p-6"></div></section>
+        <section id="itinerary" class="mb-16 scroll-mt-24"><div id="itinerary-content" class="card p-6"></div></section>
     </main>
 
-    <footer class="bg-brand-dark text-white text-center py-6 mt-12">
-        <p>가족의 모든 순간이 행복으로 채워지기를 바랍니다.</p>
-    </footer>
+    <!-- Modal Structure -->
+    <div id="info-modal" class="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 hidden opacity-0">
+        <div class="modal-content bg-white w-full max-w-2xl rounded-lg shadow-xl p-6 md:p-8 transform scale-95 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-start mb-4">
+                <h3 id="modal-title" class="text-2xl font-bold text-brand-primary"></h3>
+                <button id="modal-close-btn" class="text-3xl font-light leading-none hover:text-red-500">×</button>
+            </div>
+            <div id="modal-details" class="text-gray-700 prose max-w-none"></div>
+            <div class="mt-6 pt-4 border-t">
+                <h4 class="font-semibold text-sm text-gray-500">정보 출처</h4>
+                <p id="modal-source" class="text-sm text-gray-600 break-all"></p>
+            </div>
+        </div>
+    </div>
 
-    <script type="module">
-        // --- This script will only run after the entire page is loaded ---
-        console.log("[Debug] Page loaded. Starting main script.");
+    <footer id="footer" class="bg-brand-dark text-white text-center py-6 mt-12"></footer>
 
-        // --- Static UI Rendering ---
-        function renderStaticUI() {
-            console.log("[Debug] Starting to render static UI elements.");
-            try {
-                const tooltipTitleCallback=(i)=>{const t=i[0];let e=t.chart.data.labels[t.dataIndex];return Array.isArray(e)?e.join(" "):e};new Chart(document.getElementById("financeChart").getContext("2d"),{type:"doughnut",data:{labels:["신용카드 (리조트 내)","페소 현금 (팁/배달)"],datasets:[{data:[85,15],backgroundColor:["#3498DB","#5DADE2"],borderColor:"#F8F7F4",borderWidth:4}]},options:{responsive:!0,maintainAspectRatio:!1,plugins:{legend:{position:"bottom"},tooltip:{callbacks:{title:tooltipTitleCallback}}}}});new Chart(document.getElementById("transportChart").getContext("2d"),{type:"bar",data:{labels:["리조트 셔틀",["프라이빗","리무진"],"일반 택시/그랩"],datasets:[{label:"안전",data:[9,10,4],backgroundColor:"#2C3E50"},{label:"편의성",data:[8,10,7],backgroundColor:"#5DADE2"},{label:"비용 효율",data:[7,3,10],backgroundColor:"#E67E22"}]},options:{responsive:!0,maintainAspectRatio:!1,scales:{y:{beginAtZero:!0,max:10}},plugins:{legend:{position:"bottom"},tooltip:{callbacks:{title:tooltipTitleCallback}}}}});const e={water:[{t:"어린이 수영장 & 아쿠아 플레이",d:"안전한 수심과 그늘막, 작은 미끄럼틀이 있어 영유아에게 완벽해요."},{t:"프라이빗 비치",d:"파도가 잔잔하고 모래놀이 장난감을 무료로 빌릴 수 있어요."}],play:[{t:"토들러 존",d:"3세 이하 전용 공간! 볼풀, 미니 클라이밍 기구가 있어요."},{t:"어드벤처 존",d:"대형 슬라이드 옆 유아 공간을 이용하세요. (긴팔, 양말 필수!)"}],experience:[{t:"물고기 먹이 주기",d:"해변에서 열리는 무료 체험. 아기에게 특별한 경험을 선물하세요."},{t:"미니 골프",d:"온 가족이 함께 즐기는 가벼운 야외 활동입니다."}]},t=document.getElementById("activity-cards");for(const[a,l]of Object.entries(e))for(const e of l){const l=document.createElement("div");l.className="activity-card border p-4 rounded-lg",l.dataset.category=a,l.innerHTML=`<h5 class="font-bold">${e.t}</h5><p class="text-sm text-gray-600">${e.d}</p>`,t.appendChild(l)}const a=document.querySelectorAll(".filter-btn");a.forEach(e=>{e.addEventListener("click",()=>{a.forEach(e=>{e.classList.remove("bg-brand-primary","text-white"),e.classList.add("bg-gray-200")}),e.classList.add("bg-brand-primary","text-white"),e.classList.remove("bg-gray-200");const l=e.dataset.filter;document.querySelectorAll("#activity-cards .activity-card").forEach(e=>e.style.display="all"===l||e.dataset.category===l?"block":"none")})}),a[0].click();const l=document.getElementById("tab-resort"),n=document.getElementById("tab-delivery"),r=document.getElementById("content-resort"),o=document.getElementById("content-delivery");r.innerHTML='<h4 class="text-xl font-bold mb-4 text-center">아기와 함께 가기 좋은 레스토랑</h4><div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-center"><div><h5 class="font-bold text-lg">타이즈 (Tides)</h5><p class="text-sm text-gray-600">인터내셔널 뷔페. 어린이 전용 코너와 팬케이크가 인기 만점!</p></div><div><h5 class="font-bold text-lg">아쿠아 (Acqua)</h5><p class="text-sm text-gray-600">이탈리안 레스토랑. 조용한 분위기.</p></div><div><h5 class="font-bold text-lg">부코 바 / 브리즈</h5><p class="text-sm text-gray-600">수영장 옆 캐주얼 다이닝.</p></div></div>',o.innerHTML='<h4 class="text-xl font-bold mb-4 text-center">리조트로 한식과 맥주 배달시키기</h4><div class="grid grid-cols-1 md:grid-cols-2 gap-6"><div><h5 class="font-bold mb-2">한식 배달 추천</h5><ul class="list-disc list-inside text-gray-700"><li>본촌 (Bonchon)</li><li>분식 (Bunsik)</li><li>다인 (Da-In)</li></ul></div><div><h5 class="font-bold mb-2">맥주 & 간식 배달</h5><ul class="list-disc list-inside text-gray-700"><li>아씨 세시 한인마트</li><li>로빈슨 슈퍼마켓</li></ul></div></div><div class="mt-6 bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded text-center"><p class="font-extrabold text-lg">⭐️ 최고의 꿀팁! ⭐️</p><p>카카오톡 ID: <span class="font-mono bg-white px-2 py-1 rounded-md">pusanmart</span></p></div>';function c(e,t,a,l){e.classList.add("active","text-brand-primary"),e.classList.remove("text-gray-500"),t.classList.remove("active","text-brand-primary"),t.classList.add("text-gray-500"),a.classList.remove("hidden"),l.classList.add("hidden")}c(l,n,r,o),l.addEventListener("click",()=>c(l,n,r,o)),n.addEventListener("click",()=>c(n,l,o,r));const i=document.getElementById("itinerary-accordion"),d=[{day:1,title:"도착 및 리조트 적응",details:["공항 도착 후 리조트 셔틀로 이동","점심 식사 후 수영장에서 휴식","해변에서 일몰 감상"]},{day:2,title:"물놀이의 세계",details:["어린이 수영장 & 아쿠아 플레이","아기 낮잠, 부모님 휴식","베이비시터 서비스 이용 후 저녁 식사"]},{day:3,title:"바다와 육지 탐험",details:["물고기 먹이주기 & 모래놀이","아기와 토들러 존 방문","배달 음식으로 편안한 저녁"]},{day:4,title:"놀이와 휴식",details:["어드벤처 존 방문 후 미니 골프","메인 수영장에서 마지막 물놀이","기념 저녁 식사"]},{day:5,title:"안녕, 세부!",details:["여유로운 마지막 아침 식사","체크아웃 후 공항 이동"]}];for(const e of d){const t=document.createElement("div");t.className="bg-white rounded-lg shadow-lg overflow-hidden",t.innerHTML=`<button class="accordion-header w-full p-4 text-left font-bold text-lg bg-brand-light flex justify-between items-center"><span>${e.day}일차: ${e.title}</span><span class="transform transition-transform duration-300">▼</span></button><div class="accordion-content p-4 border-t hidden">${e.details.map(e=>`<p>• ${e}</p>`).join("")}</div>`,i.appendChild(t)}document.querySelectorAll(".accordion-header").forEach(e=>{e.addEventListener("click",()=>{e.nextElementSibling.classList.toggle("hidden"),e.querySelector("span:last-child").classList.toggle("rotate-180")})});const s=document.querySelectorAll("section"),m=document.querySelectorAll("#main-nav a");window.addEventListener("scroll",()=>{let e="";s.forEach(t=>{pageYOffset>=t.offsetTop-120&&(e=t.getAttribute("id"))}),m.forEach(t=>{t.classList.remove("active"),t.getAttribute("href").includes(e)&&t.classList.add("active")})});
-                console.log("[Debug] Static UI rendering complete.");
-            } catch (error) {
-                console.error("[Debug] Error rendering static UI:", error);
-            }
-        }
-        
-        // --- Firebase Logic Function ---
-        async function initFirebase() {
-            console.log("[Debug] Attempting to initialize Firebase.");
-            const { initializeApp } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js");
-            const { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, addDoc, serverTimestamp } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
-            const { getAuth, signInAnonymously, onAuthStateChanged } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js");
-
-            const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
-            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-cebu-trip-app';
-            let db, auth, tripDocRef, unsubscribe;
-
-            const checklistData = { '서류 & 금전': {'passport':'여권 & 항공권','etravel':'eTravel QR코드','money':'신용카드 & 페소 현금'},'아기 필수품':{'diapers':'기저귀 (방수/일반)','rashguard':'긴팔 래쉬가드 & 모자','clothes':'긴팔옷/양말 (어드벤처존)','toys':'애착용품 & 비상간식'},'건강 & 안전':{'sunscreen':'유아용 선크림','repellent':'벌레 퇴치제 (필수)','meds':'상비약 (해열제 등)'}};
-            const defaultChecklistState = {passport:false,etravel:false,money:false,diapers:false,rashguard:false,clothes:false,toys:false,sunscreen:false,repellent:false,meds:false};
-
-            function displayFirebaseError(message) {
-                console.error(`[Debug] Firebase Error: ${message}`);
-                const errorMsg = `<p class="text-red-500 font-semibold">${message}</p>`;
-                document.getElementById('share-loader').innerHTML = errorMsg;
-                document.getElementById('checklist-loader').innerHTML = errorMsg;
-            }
-
-            if (!firebaseConfig || Object.keys(firebaseConfig).length === 0) {
-                displayFirebaseError("공유 기능을 불러올 수 없습니다. 이 기능은 특정 환경에서만 지원됩니다.");
-                return;
-
-            console.log("[Debug] Firebase config found. Initializing app...");
-            try {
-                const app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                auth = getAuth(app);
-                
-                console.log("[Debug] Signing in anonymously...");
-                await signInAnonymously(auth);
-                onAuthStateChanged(auth, user => {
-                    if (user) { 
-                        console.log("[Debug] Auth state changed, user is signed in:", user.uid);
-                        handleTripSession(); 
-                    } else { 
-                        displayFirebaseError("인증에 실패했습니다. 페이지를 새로고침 해주세요."); 
-                    }
-                });
-            } catch (error) {
-                displayFirebaseError(`초기화 중 오류 발생: ${error.message}`);
-            }
-
-            async function handleTripSession() {
-                console.log("[Debug] Handling trip session...");
-                const params = new URLSearchParams(window.location.search);
-                let tripId = params.get('tripId');
-                const collectionPath = `artifacts/${appId}/public/data/cebu-trip-checklists`;
-                try {
-                    let isNewUrl = false;
-                    if (tripId) {
-                        console.log(`[Debug] Existing tripId found: ${tripId}`);
-                        tripDocRef = doc(db, collectionPath, tripId);
-                    } else {
-                        isNewUrl = true;
-                        console.log("[Debug] No tripId found, creating new trip document...");
-                        const newDocRef = await addDoc(collection(db, collectionPath), { createdAt: serverTimestamp(), checklist: defaultChecklistState });
-                        tripId = newDocRef.id;
-                        console.log(`[Debug] New trip document created with id: ${tripId}`);
-                        tripDocRef = newDocRef;
-                    }
-                    
-                    if(isNewUrl) {
-                         try {
-                            // This might fail in sandboxed environments, so we wrap it.
-                            history.replaceState({}, 'Cebu Trip', `?tripId=${tripId}`);
-                            document.getElementById('share-url').value = window.location.href;
-                            document.getElementById('share-content').classList.remove('hidden');
-                         } catch (e) {
-                            console.warn("[Debug] history.replaceState failed. This is expected in some sandboxed environments.", e);
-                            document.getElementById('share-fallback').classList.remove('hidden');
-                            document.getElementById('fallback-trip-id').textContent = tripId;
-                         }
-                    } else {
-                        document.getElementById('share-url').value = window.location.href;
-                        document.getElementById('share-content').classList.remove('hidden');
-                    }
-                    
-                    document.getElementById('share-loader').classList.add('hidden');
-
-                    if (unsubscribe) unsubscribe();
-                    console.log("[Debug] Setting up Firestore onSnapshot listener.");
-                    unsubscribe = onSnapshot(tripDocRef, (docSnap) => {
-                        console.log("[Debug] onSnapshot fired.");
-                        if (docSnap.exists()) {
-                            console.log("[Debug] Document data:", docSnap.data());
-                            renderChecklist(docSnap.data().checklist);
-                        } else {
-                             console.log("[Debug] Document does not exist, creating with default state.");
-                            setDoc(tripDocRef, { createdAt: serverTimestamp(), checklist: defaultChecklistState });
-                        }
-                    }, error => {
-                        displayFirebaseError(`데이터 동기화 중 오류 발생: ${error.message}`);
-                    });
-                } catch (error) {
-                     displayFirebaseError(`여행 정보를 불러오는 데 실패했습니다: ${error.message}`);
+    <script>
+    // =================================================================
+    // 3. DATA
+    // =================================================================
+    const APP_DATA = {
+        uiText: {
+            headerTitle: "AI 세부 가족여행 플래너",
+            heroTitle: "박태순님 가족의 샹그릴라 막탄 여행",
+            heroSubtitle: "2025.07.14 ~ 07.18 | 궁금한 항목 옆 'i' 아이콘을 터치하여 상세 정보를 확인해보세요.",
+            prepTitle: "여행 준비 대시보드",
+            prepSubtitle: "필수 준비사항을 확인하고 꼼꼼하게 계획하세요.",
+            expensesTitle: "여행 경비 계산기",
+            activitiesTitle: "리조트 활동",
+            diningTitle: "먹거리 가이드",
+            safetyTitle: "건강 & 안전 허브",
+            itineraryTitle: "4박 5일 추천 일정",
+            itinerarySubtitle: "아래 추천 일정은 고정된 정보입니다. AI로 새로운 맞춤 일정을 생성해 보세요!",
+            footerText: "가족의 모든 순간이 행복으로 채워지기를 바랍니다."
+        },
+        navigation: [ { id: 'prep', text: '준비' }, { id: 'expenses', text: '경비' }, { id: 'activities', text: '활동' }, { id: 'dining', text: '먹거리' }, { id: 'safety', text: '안전' }, { id: 'itinerary', text: '일정' } ],
+        modalData: {
+            etravel: {title: 'eTravel 등록 상세 안내',details: `<p>eTravel은 필리핀 입국 필수 전자 입국 신고서입니다. <strong>출발 72시간 전부터 등록</strong> 가능하며, QR코드를 받아야 합니다.</p><ul><li><strong>비용:</strong> <strong>완전 무료</strong>입니다. 결제를 요구하는 웹사이트는 사기입니다.</li><li><strong>등록처:</strong> 공식 웹사이트는 <a href="https://etravel.gov.ph" target="_blank" class="text-blue-600 hover:underline">etravel.gov.ph</a> 입니다.</li><li><strong>중요:</strong> 가족 구성원 모두(아기 포함) 개별 등록 후 QR코드를 휴대폰에 캡쳐해두세요.</li></ul>`,source: '필리핀 이민국(Bureau of Immigration) 공식 웹사이트'},
+            payment: {title: '결제 전략 및 환전/팁 상세',details: `<h4>결제 수단</h4><ul><li><strong>신용카드 (약 85%):</strong> 리조트 내 모든 시설에서 사용 가능하여 편리하고 환전 수수료를 절약할 수 있습니다.</li><li><strong>페소 현금 (약 15%):</strong> 팁, 배달 음식, 소규모 상점 이용에 필요합니다.</li></ul><h4>환전</h4><ul><li><strong>대만에서:</strong> 타오위안 공항 또는 시중 은행에서 초기 경비(교통비, 첫날 팁 등)로 <strong>100~200 USD 상당의 페소</strong>만 환전하는 것을 추천합니다.</li><li><strong>세부에서:</strong> 현지 ATM에서 국제현금카드로 인출하는 것이 가장 효율적입니다. 리조트 환전은 환율이 불리합니다.</li></ul><h4>팁(Tip) 문화</h4><ul><li><strong>객실 청소:</strong> 매일 아침 베개 밑이나 테이블 위에 50~100페소</li><li><strong>포터(짐 운반):</strong> 짐 1개당 20~50페소</li><li><strong>레스토랑:</strong> 계산서에 봉사료(Service Charge) 포함 시 별도 팁 불필요.</li><li><strong>마사지사:</strong> 만족도에 따라 100페소 내외</li></ul>`,source: '주요 금융사 해외 결제 가이드, 세부 여행 커뮤니티'},
+            checklist: {title: '준비물 상세 체크리스트',details: `<h4>부모님</h4><ul><li>의류: 여름 옷, 얇은 긴팔 가디건(냉방 대비), 수영복, 속옷, 잠옷</li><li>기타: 모자, 선글라스, 개인 세면도구, 화장품, 멀티 어댑터</li></ul><h4>아기</h4><ul><li>의류: 긴팔/반팔 래쉬가드, 아쿠아슈즈, 챙 넓은 모자, <strong>어드벤처 존용 긴팔/양말</strong></li><li>용품: 방수/일반 기저귀, 애착인형, 턱받이, 휴대용 유모차, 젖병 소독기(필요 시)</li></ul><h4>공통</h4><ul><li>필수: 여권, 왕복 항공권, eTravel QR코드, 신용카드, 페소 현금</li><li>건강: 성인/유아용 상비약(해열제, 지사제 등), 선크림, 알로에젤, 방수팩</li><li><strong>모기 기피제:</strong> 영유아에게는 <strong>이카리딘(Icaridin)</strong> 성분을 추천하며, DEET 성분은 주의가 필요합니다.</li></ul>`,source: '소아과 의사 여행 건강 권고, 육아 커뮤니티'},
+            transport: {title: '공항 이동수단 상세 비교',details: `<p>리조트의 답변에 따르면, 현재 <strong>리조트 셔틀은 이용이 불가</strong>합니다. 대신 아래 프라이빗 차량 서비스를 예약해야 합니다.</p><ul class="list-disc list-inside my-4 space-y-2"><li><strong>프라이빗 세단 (3인승):</strong> 편도 1,600 페소</li><li><strong>프라이빗 밴 (7인승):</strong> 편도 2,300 페소</li></ul><p><strong>예약/문의:</strong> <a href="mailto:reservations.mac@shangri-la.com" class="text-blue-600 hover:underline">reservations.mac@shangri-la.com</a> 으로 회신하여 예약하세요.</p><p class="font-bold mt-4 text-red-600">※ 중요: 이메일 회신에 카시트 언급이 없었으므로, 예약 시 <strong>19개월 아기를 위한 카시트 제공 가능 여부를 반드시 재확인</strong>해야 합니다.</p><p class="mt-4">팁: 택시/그랩은 저렴하지만 카시트가 없어 아기 동반 시에는 프라이빗 차량이 훨씬 안전합니다.</p>`,source: '샹그릴라 막탄 예약과 이메일 (2025년 6월 30일)'},
+            dining_tides: { title: '타이즈 (Tides) 상세', details: '<p>온 가족이 즐기기 좋은 인터내셔널 뷔페 레스토랑입니다. 아침, 점심, 저녁 모두 운영하며, 특히 키즈 섹션이 잘 되어 있어 아이들이 좋아합니다.</p>', source: '샹그릴라 막탄 공식 웹사이트' },
+            dining_acqua: { title: '아쿠아 (Acqua) 상세', details: '<p>수영장과 바다를 보며 즐기는 이탈리안 레스토랑입니다. 타이즈보다 조용한 분위기에서 식사를 원할 때 추천합니다. 아침 식사도 제공됩니다.</p>', source: '샹그릴라 막탄 공식 웹사이트' },
+            dining_breeze: { title: '부코 바 / 브리즈 상세', details: '<p>수영장과 해변가에 위치한 캐주얼 다이닝입니다. 햄버거, 샌드위치, 칵테일 등 가벼운 식사와 음료를 즐기기 좋습니다.</p>', source: '샹그릴라 막탄 공식 웹사이트' },
+            delivery_tip: {title: '배달 음식 주문 상세 팁',details: `<p>리조트에서 편하게 다양한 음식을 즐길 수 있습니다.</p><ul><li><strong>필수 앱:</strong> <strong>Grab (그랩)</strong> 또는 <strong>Foodpanda (푸드판다)</strong>. 한국에서 미리 다운로드 및 카드 등록을 완료하세요.</li><li><strong>수령 장소:</strong> 음식은 리조트 로비에서 직접 수령해야 합니다.</li><li><strong>카카오톡 주문:</strong> '부산마트'는 카카오톡(ID: pusanmart)으로 한국 식료품을 한국어로 주문할 수 있어 매우 편리합니다.</li></ul>`,source: '세부 교민 커뮤니티, 맘카페 세부 여행 후기'},
+            health: {title: '아기 건강 수칙 상세',details: `<p>열대 기후에서는 사소한 부주의가 아기의 컨디션을 해칠 수 있습니다.</p><ul><li><strong>안전한 물:</strong> 절대로 수돗물을 마시지 마세요. 양치할 때도 생수를 사용하는 것이 안전합니다.</li><li><strong>자외선 차단:</strong> SPF 50+ 이상의 유아용 선크림을 2-3시간마다 덧바르고, 긴팔 래쉬가드와 모자를 반드시 착용시키세요.</li><li><strong>벌레 퇴치:</strong> 뎅기열 예방을 위해 아기용 벌레 퇴치제(<strong>이카리딘</strong> 성분 추천)를 꼼꼼히 발라주세요.</li></ul>`,source: '<a href="https://wwwnc.cdc.gov/travel" target="_blank" class="text-blue-600 hover:underline">미국 질병통제예방센터(CDC) 여행자 건강 정보</a>'},
+            medical: {title: '응급 의료 지원 상세',details: `<p>만일의 사태에 대비해 의료 지원 체계를 알아두면 안심입니다.</p><ul><li><strong>리조트 클리닉:</strong> 리조트 내에 24시간 의사와 간호사가 상주합니다. 프런트 데스크를 통해 호출할 수 있습니다.</li><li><strong>막탄 닥터스 병원:</strong> 리조트에서 가장 가깝고 시설이 좋은 종합병원입니다. 소아과 전문의가 있습니다.</li></ul><p class="font-bold mt-4">팁: 출발 전 해외여행자 보험 가입은 필수입니다.</p>`,source: '필리핀 관광부, 국제 SOS(International SOS)'}
+        },
+        expenses: {
+            fixed: [
+                { item: '항공권 (3인)', currency: 'TWD', amount: 15311 },
+                { item: '숙소 (4박)', currency: 'PHP', amount: 47627 }
+            ]
+        },
+        checklist: [ { title: '📄 서류 & 공통', items: ['여권, 항공권, eTravel', '신용카드, 페소', '상비약, 모기기피제'] }, { title: '👨‍👩‍👧 부모님', items: ['여름 옷, 긴팔 옷', '수영복, 선글라스', '개인 세면도구'] }, { title: '👶 아기', items: ['기저귀, 턱받이', '래쉬가드, 아쿠아슈즈', '유모차, 애착인형'] } ],
+        charts: {
+            payment: { type: 'doughnut', data: { labels: ["신용카드", "페소 현금"], datasets: [{ data: [85, 15], backgroundColor: ["#3498DB", "#5DADE2"], borderWidth: 0 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } } },
+            transport: { type: 'bar', data: { labels: ["프라이빗 밴", "프라이빗 세단", "택시/그랩"], datasets: [{ label: "안전도", data: [10, 10, 5], backgroundColor: "#2C3E50" }, { label: "편의성", data: [10, 9, 8], backgroundColor: "#5DADE2" }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 10 } }, plugins: { legend: { position: 'bottom' } } } }
+        },
+        activities: {
+            facilities: [ { text: '어린이 수영장 & 아쿠아 플레이', icon: 'fa-swimming-pool' }, { text: '프라이빗 비치', icon: 'fa-umbrella-beach' }, { text: '토들러 존 (실내)', icon: 'fa-shapes' }, { text: '어드벤처 존 (실내)', icon: 'fa-child-reaching' }, { text: '물고기 먹이 주기', icon: 'fa-fish-fins' }, { text: '미니 골프', icon: 'fa-golf-ball-tee' } ],
+            services: {
+                baby: [
+                    { icon: 'fa-baby-carriage', text: '아기 침대 & 욕조', detail: '사전 요청 완료, 객실에 준비될 예정입니다.' },
+                    { icon: 'fa-utensils', text: '이유식 데우기', detail: '룸서비스 팀을 통해 요청 시 데워주는 서비스가 가능합니다.' },
+                    { icon: 'fa-snowflake', text: '음식 보관', detail: '객실 내 미니 냉장고를 이용하여 보관할 수 있습니다.' }
+                ],
+                babysitter: {
+                    title: '베이비시터 서비스',
+                    details: [
+                        '<strong>요금:</strong> 최초 2시간 1,000 PHP, 이후 시간당 500 PHP',
+                        '<strong>예약:</strong> 사전 예약 필수 (Guest Service Center 문의)',
+                        '<strong>결제:</strong> 현금 또는 룸차지(3.5% 수수료) 가능'
+                    ],
+                    contact: 'guestservicecenter.mac@shangri-la.com'
                 }
             }
-        
-            function renderChecklist(data) {
-                console.log("[Debug] Rendering checklist with data:", data);
-                const container = document.getElementById('checklist-container');
-                container.innerHTML = '';
-                for (const category in checklistData) {
-                    const categoryDiv = document.createElement('div');
-                    categoryDiv.innerHTML = `<h5 class="font-bold text-lg mb-3">${category}</h5>`;
-                    const ul = document.createElement('ul');
-                    ul.className = 'space-y-2';
-                    for (const itemId in checklistData[category]) {
-                        const itemText = checklistData[category][itemId];
-                        const isChecked = data ? data[itemId] || false : false;
-                        const li = document.createElement('li');
-                        li.className = `checklist-item flex items-center ${isChecked ? 'checked' : ''}`;
-                        li.innerHTML = `<input type="checkbox" id="${itemId}" data-id="${itemId}" class="h-4 w-4 mr-2" ${isChecked ? 'checked' : ''}><label for="${itemId}" class="cursor-pointer">${itemText}</label>`;
-                        ul.appendChild(li);
-                    }
-                    categoryDiv.appendChild(ul);
-                    container.appendChild(categoryDiv);
-                }
-                document.querySelectorAll('#checklist-container input[type="checkbox"]').forEach(checkbox => {
-                    checkbox.addEventListener('change', (e) => updateChecklistInFirestore(e.target.dataset.id, e.target.checked));
-                });
-            }
+        },
+        dining: {
+            resort: [ { id: 'dining_tides', title: '타이즈 (Tides)', desc: '가족 식사에 가장 무난한 인터내셔널 뷔페' }, { id: 'dining_acqua', title: '아쿠아 (Acqua)', desc: '조용한 분위기의 이탈리안 레스토랑' }, { id: 'dining_breeze', title: '부코 바 / 브리즈', desc: '수영장 옆 캐주얼 다이닝' } ],
+            options: [
+                { value: '아무거나', text: '아무거나' }, { value: '필리핀 현지식', text: '필리핀 현지식' }, { value: '해산물', text: '해산물' }, { value: '한식', text: '한식' }, { value: '양식 (파스타, 스테이크)', text: '양식' }, { value: '피자 또는 햄버거', text: '피자/햄버거' }, { value: '맥주와 잘 어울리는 안주', text: '맥주 안주' }, { value: '케이크 또는 아이스크림 같은 디저트', text: '디저트' }, { value: '아이가 잘 먹는 키즈 프렌들리 메뉴', text: '키즈 프렌들리' }
+            ]
+        },
+        itinerary: [ {d:1,t:"도착 및 리조트 적응",c:["공항 도착 후 프라이빗 차량으로 이동","점심 식사 후 조용한 오션 윙 수영장에서 휴식","타이즈 뷔페에서 이른 저녁, 해변에서 일몰 감상"]},{d:2,t:"물놀이의 세계",c:["타이즈에서 아침 식사, 어린이 수영장 & 아쿠아 플레이","룸서비스 점심, 아기 낮잠. 부모님은 해변 카바나에서 휴식","베이비시터 서비스 이용 후 카우리 코브에서 로맨틱 저녁 식사"]},{d:3,t:"바다와 육지 탐험",c:["아쿠아에서 조용한 아침 식사, 해변에서 물고기 먹이주기 & 모래놀이","브리즈에서 점심, 아기 낮잠. 부모님 교대로 스파 이용 또는 아기와 토들러 존 방문","배달 앱으로 한식 치킨과 맥주 주문! 객실에서 편안한 저녁"]},{d:4,t:"놀이와 휴식",c:["타이즈에서 아침 식사, 어드벤처 존(유아 공간) 방문 후 미니 골프","뷔페에서 점심, 아기 낮잠. 부부 함께 메인 수영장에서 마지막 물놀이","가장 좋았던 레스토랑에서 마지막 기념 저녁 식사"]},{d:5,t:"안녕, 세부!",c:["여유로운 마지막 아침 식사 후 짐 정리","체크아웃 후 프라이빗 차량으로 공항 이동"]} ]
+    };
 
-            async function updateChecklistInFirestore(itemId, isChecked) {
-                if (!tripDocRef) return;
-                console.log(`[Debug] Updating Firestore: ${itemId} -> ${isChecked}`);
-                try {
-                    await setDoc(tripDocRef, { checklist: { [itemId]: isChecked } }, { merge: true });
-                } catch (error) { console.error("Error updating checklist: ", error); }
-            }
-        
-            document.getElementById('copy-url-btn').addEventListener('click', () => {
-                const urlInput = document.getElementById('share-url');
-                urlInput.select();
-                document.execCommand('copy');
-                const feedback = document.getElementById('copy-feedback');
-                feedback.textContent = '복사되었습니다!';
-                setTimeout(() => { feedback.textContent = ''; }, 2000);
-            });
+    // =================================================================
+    // 4. LOGIC (JavaScript)
+    // =================================================================
+    document.addEventListener('DOMContentLoaded', () => {
+        try {
+            // --- RENDER FUNCTIONS ---
+            const renderStaticText = () => {
+                const { uiText } = APP_DATA;
+                document.getElementById('header-title').textContent = uiText.headerTitle;
+                document.getElementById('hero-title').textContent = uiText.heroTitle;
+                document.getElementById('hero-subtitle').textContent = uiText.heroSubtitle;
+                document.getElementById('footer').innerHTML = `<p>${uiText.footerText}</p>`;
+            };
+
+            const renderNavigation = () => {
+                const navContainer = document.getElementById('main-nav');
+                if (!navContainer) return;
+                navContainer.innerHTML = APP_DATA.navigation.map(item => 
+                    `<a href="#${item.id}" class="nav-link font-semibold pb-1 border-b-2 border-transparent hover:text-brand-accent transition-colors">${item.text}</a>`
+                ).join('');
+            };
             
-            document.getElementById('fallback-trip-id').addEventListener('click', (e) => {
-                const textToCopy = e.target.textContent;
-                navigator.clipboard.writeText(textToCopy).then(() => {
-                    const feedback = document.getElementById('fallback-copy-feedback');
-                    feedback.textContent = 'ID가 복사되었습니다!';
-                    setTimeout(() => { feedback.textContent = ''; }, 2000);
+            const renderPrepSection = () => {
+                const container = document.getElementById('prep-content');
+                if (!container) return;
+                const { prepTitle, prepSubtitle } = APP_DATA.uiText;
+                const { checklist } = APP_DATA;
+
+                container.innerHTML = `
+                    <h3 class="text-3xl font-bold text-center mb-2">${prepTitle}</h3>
+                    <p class="text-center text-gray-600 mb-8">${prepSubtitle}</p>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                        <div>
+                            <h4 class="text-xl font-bold text-brand-primary flex justify-between items-center">eTravel 등록 절차 <span class="info-trigger" data-modal-id="etravel">i</span></h4>
+                            <div class="mt-4 space-y-4 md:space-y-0 md:flex md:items-center md:justify-between text-center">
+                                <div class="flex-1"><div class="text-4xl">📄</div><p class="font-bold mt-2">1. 온라인 등록</p></div>
+                                <div class="text-xl text-gray-400 hidden md:block">→</div><div class="text-xl text-gray-400 md:hidden transform rotate-90 mx-auto">↓</div>
+                                <div class="flex-1"><div class="text-4xl">📱</div><p class="font-bold mt-2">2. QR 코드 저장</p></div>
+                                <div class="text-xl text-gray-400 hidden md:block">→</div><div class="text-xl text-gray-400 md:hidden transform rotate-90 mx-auto">↓</div>
+                                <div class="flex-1"><div class="text-4xl">🛂</div><p class="font-bold mt-2">3. 입국 심사</p></div>
+                            </div>
+                        </div>
+                        <div>
+                            <h4 class="text-xl font-bold text-brand-primary flex justify-between items-center">공항 이동 방법 <span class="info-trigger" data-modal-id="transport">i</span></h4>
+                            <div class="chart-container mt-4" style="height:180px;"><canvas id="transportChart"></canvas></div>
+                        </div>
+                    </div>
+                    <div class="lg:col-span-2">
+                        <h4 class="text-xl font-bold text-brand-primary flex justify-between items-center">준비물 체크리스트 <span class="info-trigger" data-modal-id="checklist">i</span></h4>
+                        <div id="checklist-container" class="mt-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                            ${checklist.map(category => `
+                                <div class="space-y-2"> <h5 class="font-bold">${category.title}</h5> <ul class="space-y-1 pl-2">
+                                    ${category.items.map(item => `<li class="checklist-item"><label class="flex items-center cursor-pointer"><input type="checkbox" class="mr-2 h-4 w-4 rounded border-gray-300 text-brand-primary focus:ring-brand-primary">${item}</label></li>`).join('')}
+                                </ul> </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+                new Chart(document.getElementById("transportChart").getContext("2d"), APP_DATA.charts.transport);
+            };
+
+            const renderExpensesSection = () => {
+                const container = document.getElementById('expenses-content');
+                if (!container) return;
+                const { expensesTitle } = APP_DATA.uiText;
+                const { fixed } = APP_DATA.expenses;
+                
+                let fixedTwdTotal = fixed.filter(e => e.currency === 'TWD').reduce((sum, e) => sum + e.amount, 0);
+                let fixedPhpTotal = fixed.filter(e => e.currency === 'PHP').reduce((sum, e) => sum + e.amount, 0);
+
+                container.innerHTML = `
+                    <h3 class="text-3xl font-bold text-center mb-8">${expensesTitle}</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div>
+                            <h4 class="text-xl font-bold text-brand-dark mb-4">고정 지출</h4>
+                            <div id="fixed-expenses-list" class="space-y-2">
+                                ${fixed.map(e => `
+                                    <div class="flex justify-between items-center p-3 bg-gray-100 rounded-lg">
+                                        <span><i class="fas fa-receipt mr-2 text-gray-500"></i>${e.item}</span>
+                                        <span class="font-bold">${e.amount.toLocaleString()} ${e.currency}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                        <div>
+                            <h4 class="text-xl font-bold text-brand-dark mb-4">추가 지출</h4>
+                            <div id="additional-expenses-list" class="space-y-2 mb-4"></div>
+                            <div class="flex gap-2">
+                                <input type="text" id="expense-item" placeholder="항목 (예: 저녁 식사)" class="flex-grow p-2 border rounded-md">
+                                <input type="number" id="expense-amount" placeholder="금액 (PHP)" class="w-28 p-2 border rounded-md">
+                                <button id="add-expense-btn" class="bg-brand-primary text-white px-4 rounded-md hover:bg-blue-600">추가</button>
+                            </div>
+                        </div>
+                    </div>
+                    <hr class="my-8">
+                    <div id="total-expenses" class="text-center">
+                        <h4 class="text-2xl font-bold">총 예상 경비</h4>
+                        <p class="text-3xl font-bold text-brand-accent mt-2" id="total-twd">TWD ${fixedTwdTotal.toLocaleString()}</p>
+                        <p class="text-3xl font-bold text-brand-accent mt-1" id="total-php">+ PHP ${fixedPhpTotal.toLocaleString()}</p>
+                    </div>
+                `;
+            };
+
+            const renderActivitiesSection = () => {
+                const container = document.getElementById('activities-content');
+                if (!container) return;
+                const { activitiesTitle } = APP_DATA.uiText;
+                const { facilities, services } = APP_DATA.activities;
+                
+                container.innerHTML = `
+                    <h3 class="text-3xl font-bold text-center mb-8">${activitiesTitle}</h3>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+                        <div class="card p-6">
+                            <h4 class="text-xl font-bold text-brand-primary flex justify-between items-center">리조트 시설</h4>
+                            <div id="activity-cards" class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                                ${facilities.map(item => `
+                                    <div class="p-4 rounded-lg border bg-gray-50 flex items-center"><i class="fas ${item.icon} text-brand-primary w-6 mr-3"></i><h5 class="font-bold">${item.text}</h5></div>
+                                `).join('')}
+                            </div>
+                        </div>
+                        <div class="card p-6">
+                            <h4 class="text-xl font-bold text-brand-primary flex justify-between items-center">리조트 서비스</h4>
+                            <div class="mt-4 space-y-4">
+                                ${services.baby.map(s => `
+                                    <div class="flex items-start">
+                                        <i class="fas ${s.icon} text-brand-primary w-6 mr-3 mt-1"></i>
+                                        <div>
+                                            <h5 class="font-bold">${s.text}</h5>
+                                            <p class="text-sm text-gray-600">${s.detail}</p>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                                <hr>
+                                <div class="flex items-start">
+                                    <i class="fas fa-hands-holding-child text-brand-primary w-6 mr-3 mt-1"></i>
+                                    <div>
+                                        <h5 class="font-bold">${services.babysitter.title}</h5>
+                                        <ul class="text-sm text-gray-600 list-disc list-inside">
+                                            ${services.babysitter.details.map(d => `<li>${d}</li>`).join('')}
+                                        </ul>
+                                        <p class="text-sm text-gray-600 mt-1"><strong>문의:</strong> <a href="mailto:${services.babysitter.contact}" class="text-blue-600 hover:underline">${services.babysitter.contact}</a></p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            };
+
+            const renderDiningSection = () => {
+                const container = document.getElementById('dining-content');
+                if (!container) return;
+                const { diningTitle } = APP_DATA.uiText;
+                const { resort, options } = APP_DATA.dining;
+                const diningOptionsHtml = options.map(opt => `<option value="${opt.value}">${opt.text}</option>`).join('');
+
+                container.innerHTML = `
+                    <h3 class="text-3xl font-bold text-center mb-8">${diningTitle}</h3>
+                    <div class="flex justify-center border-b mb-6">
+                        <button id="tab-restaurant" class="tab-button flex-1 py-2 font-semibold text-lg border-b-4 transition-colors active">맛집 추천 (AI)</button>
+                        <button id="tab-delivery" class="tab-button flex-1 py-2 font-semibold text-lg border-b-4 transition-colors">배달 & 룸서비스 (AI)</button>
+                    </div>
+                    <!-- Restaurant Tab -->
+                    <div id="content-restaurant" class="tab-content">
+                        <h4 class="text-xl font-bold text-brand-dark mb-4">리조트 다이닝</h4>
+                        <div class="space-y-4">${resort.map(item => `
+                            <div class="p-4 rounded-lg border"><h5 class="font-bold flex justify-between items-center">${item.title} <span class="info-trigger" data-modal-id="${item.id}">i</span></h5><p class="text-sm text-gray-600">${item.desc}</p></div>
+                        `).join('')}</div>
+                        <hr class="my-8">
+                        <div>
+                            <h4 class="text-xl font-bold text-brand-dark mb-4">✨ AI 근처 맛집 추천</h4>
+                            <p class="text-gray-600 mb-4">원하는 음식 종류를 선택하고 버튼을 누르면, AI가 아기와 함께 가기 좋은 리조트 근처 맛집을 추천해 드립니다.</p>
+                            <div id="ai-dining-controls" class="flex flex-wrap gap-4 items-center">
+                                <select id="dining-cuisine-select" class="p-2 border rounded-md">${diningOptionsHtml}</select>
+                                <button id="generate-dining-btn" class="ai-button">추천 받기</button>
+                            </div>
+                            <div id="ai-dining-loader" class="hidden"><div class="loader"></div></div>
+                            <div id="ai-dining-results" class="mt-6 space-y-4"></div>
+                        </div>
+                    </div>
+                    <!-- Delivery Tab -->
+                    <div id="content-delivery" class="tab-content hidden">
+                        <div>
+                            <h4 class="text-xl font-bold text-brand-dark mb-4">✨ AI 배달 음식 추천</h4>
+                            <p class="text-gray-600 mb-4">원하는 음식 종류를 선택하면, AI가 그랩푸드/푸드판다로 주문 가능한 메뉴를 추천해 드립니다.</p>
+                            <div id="ai-delivery-controls" class="flex flex-wrap gap-4 items-center">
+                                <select id="delivery-cuisine-select" class="p-2 border rounded-md">${diningOptionsHtml}</select>
+                                <button id="generate-delivery-btn" class="ai-button">추천 받기</button>
+                            </div>
+                            <div id="ai-delivery-loader" class="hidden"><div class="loader"></div></div>
+                            <div id="ai-delivery-results" class="mt-6 space-y-4"></div>
+                            <div class="mt-8 bg-green-100 p-4 rounded-lg text-center">
+                                <p class="font-bold">⭐️ 배달 꿀팁 <span class="info-trigger" data-modal-id="delivery_tip">i</span></p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            };
+
+            const renderSafetySection = () => {
+                const container = document.getElementById('safety-content');
+                if (!container) return;
+                const { safetyTitle } = APP_DATA.uiText;
+                container.innerHTML = `
+                    <h3 class="text-3xl font-bold text-center mb-8">${safetyTitle}</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div>
+                            <h4 class="text-xl font-bold text-brand-primary flex justify-between items-center">아기 건강 3대 수칙 <span class="info-trigger" data-modal-id="health">i</span></h4>
+                            <div class="flex justify-around text-center mt-6">
+                                <div><div class="text-5xl mb-2">💧</div><h5 class="font-bold">안전한 물</h5></div>
+                                <div><div class="text-5xl mb-2">☀️</div><h5 class="font-bold">자외선 차단</h5></div>
+                                <div><div class="text-5xl mb-2">🦟</div><h5 class="font-bold">벌레 퇴치</h5></div>
+                            </div>
+                        </div>
+                        <div>
+                            <h4 class="text-xl font-bold text-brand-primary flex justify-between items-center">응급 의료 지원 <span class="info-trigger" data-modal-id="medical">i</span></h4>
+                            <div class="space-y-4 mt-4">
+                                <div class="p-3 rounded-lg border"><p class="font-bold">리조트 내 클리닉 (24시간)</p></div>
+                                <div class="p-3 rounded-lg border"><p class="font-bold">막탄 닥터스 병원</p></div>
+                                <div class="p-3 rounded-lg text-center bg-red-100"><p class="font-bold text-red-700">국가 긴급전화: 911</p></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            };
+
+            const renderItinerarySection = (itineraryData = APP_DATA.itinerary) => {
+                const container = document.getElementById('itinerary-content');
+                if (!container) return;
+                const { itineraryTitle, itinerarySubtitle } = APP_DATA.uiText;
+                container.innerHTML = `
+                    <h3 class="text-3xl font-bold text-center mb-2">${itineraryTitle}</h3>
+                    <p class="text-center text-gray-600 mb-4">${itinerarySubtitle}</p>
+                    <div class="text-center mb-8">
+                        <button id="generate-itinerary-btn" class="ai-button">✨ AI 추천 일정 생성하기</button>
+                    </div>
+                    <div id="ai-itinerary-loader" class="hidden"><div class="loader"></div></div>
+                    <div id="itinerary-accordion" class="space-y-2">
+                        ${itineraryData.map(day => `
+                            <div class="bg-white rounded-lg border overflow-hidden">
+                                <button class="accordion-header w-full p-4 text-left font-bold text-lg bg-gray-50 hover:bg-gray-100 flex justify-between items-center transition-colors">
+                                    <span>${day['일차'] || day.d}일차: ${day['테마'] || day.t}</span>
+                                    <span class="transform transition-transform duration-300">▼</span>
+                                </button>
+                                <div class="accordion-content p-4 border-t hidden space-y-2 bg-white">
+                                    ${(day['활동'] || day.c).map(item => `<p class="pl-2"> • ${item}</p>`).join('')}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            };
+
+            // --- Gemini API Call Function ---
+            const callGeminiAPI = async (prompt, schema) => {
+                const apiKey = ""; // API 키는 비워두세요.
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+                
+                const payload = {
+                    contents: [{ role: "user", parts: [{ text: prompt }] }],
+                    generationConfig: {
+                        responseMimeType: "application/json",
+                        responseSchema: schema,
+                        temperature: 0.8,
+                    }
+                };
+
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        const errorBody = await response.text();
+                        console.error("API Error Response:", errorBody);
+                        throw new Error(`API 요청 실패: ${response.status}`);
+                    }
+
+                    const result = await response.json();
+                    
+                    if (result.candidates && result.candidates[0].content && result.candidates[0].content.parts[0]) {
+                        return JSON.parse(result.candidates[0].content.parts[0].text);
+                    } else {
+                        console.error("Unexpected API response structure:", result);
+                        throw new Error("API 응답에서 콘텐츠를 찾을 수 없습니다.");
+                    }
+                } catch (error) {
+                    console.error("Gemini API 호출 중 오류 발생:", error);
+                    return null;
+                }
+            };
+
+            // --- AI Feature Handlers ---
+            const handleGenerateItinerary = async (button) => {
+                button.disabled = true;
+                const loader = document.getElementById('ai-itinerary-loader');
+                const accordion = document.getElementById('itinerary-accordion');
+                accordion.innerHTML = '';
+                loader.classList.remove('hidden');
+
+                const prompt = "당신은 유능한 여행 플래너입니다. 필리핀 세부의 샹그릴라 막탄 리조트에 7월 14일부터 7월 18일까지 4박 5일간 머무는 19개월 아기를 동반한 3인 가족(성인 2, 유아 1)을 위한 편안하고 아기 친화적인 여행 일정을 짜주세요. 이 가족은 휴식, 가벼운 물놀이, 맛있는 음식을 즐깁니다. 이동 시간을 최소화하기 위해 리조트 내부 또는 매우 가까운 곳의 활동에 초점을 맞춰주세요. 각 날짜별로 짧은 테마와 2-3개의 활동 목록을 제공해주세요. 1일차 오전에 도착하고 5일차 오후에 출발하는 일정입니다. 응답은 반드시 JSON 객체로만, 그리고 모든 키와 값을 한국어로 작성해주세요.";
+                const schema = {
+                    type: "ARRAY",
+                    items: {
+                        type: "OBJECT",
+                        properties: {
+                            "일차": { type: "NUMBER", description: "여행 N일차" },
+                            "테마": { type: "STRING", description: "그날의 테마" },
+                            "활동": { type: "ARRAY", items: { type: "STRING" }, description: "활동 목록" }
+                        },
+                        required: ["일차", "테마", "활동"]
+                    }
+                };
+
+                const newItinerary = await callGeminiAPI(prompt, schema);
+                loader.classList.add('hidden');
+
+                if (newItinerary) {
+                    renderItinerarySection(newItinerary);
+                } else {
+                    accordion.innerHTML = `<p class="text-center text-red-500">일정 생성에 실패했습니다. 잠시 후 다시 시도해주세요.</p>`;
+                    setTimeout(() => renderItinerarySection(APP_DATA.itinerary), 3000);
+                }
+                document.getElementById('generate-itinerary-btn').disabled = false;
+            };
+            
+            const handleGenerateDining = async (button) => {
+                button.disabled = true;
+                const loader = document.getElementById('ai-dining-loader');
+                const resultsContainer = document.getElementById('ai-dining-results');
+                const cuisine = document.getElementById('dining-cuisine-select').value;
+                
+                resultsContainer.innerHTML = '';
+                loader.classList.remove('hidden');
+
+                const prompt = `당신은 세부 현지 음식 전문가입니다. 샹그릴라 막탄 리조트 근처에서 19개월 아기와 함께 가기 좋은 ${cuisine} 맛집 3곳을 추천해주세요. 어린 아이가 있는 가족을 환영하는 분위기여야 합니다. 각 식당의 이름, 간단한 설명, 주요 음식 종류를 알려주세요. 응답은 반드시 JSON 객체로만, 그리고 모든 키와 값을 한국어로 작성해주세요.`;
+                const schema = {
+                    type: "ARRAY",
+                    items: {
+                        type: "OBJECT",
+                        properties: {
+                            "이름": { type: "STRING" },
+                            "설명": { type: "STRING" },
+                            "종류": { type: "STRING" }
+                        },
+                        required: ["이름", "설명", "종류"]
+                    }
+                };
+
+                const recommendations = await callGeminiAPI(prompt, schema);
+                loader.classList.add('hidden');
+
+                if (recommendations) {
+                    resultsContainer.innerHTML = recommendations.map(r => `
+                        <div class="p-4 rounded-lg border border-blue-200 bg-blue-50">
+                            <h5 class="font-bold text-lg text-blue-800">${r['이름']} <span class="text-sm font-medium text-blue-600">(${r['종류']})</span></h5>
+                            <p class="text-gray-700 mt-1">${r['설명']}</p>
+                        </div>
+                    `).join('');
+                } else {
+                    resultsContainer.innerHTML = `<p class="text-center text-red-500">맛집 추천에 실패했습니다. 잠시 후 다시 시도해주세요.</p>`;
+                }
+                button.disabled = false;
+            };
+
+            const handleGenerateDelivery = async (button) => {
+                button.disabled = true;
+                const loader = document.getElementById('ai-delivery-loader');
+                const resultsContainer = document.getElementById('ai-delivery-results');
+                const cuisine = document.getElementById('delivery-cuisine-select').value;
+                
+                resultsContainer.innerHTML = '';
+                loader.classList.remove('hidden');
+
+                const prompt = `당신은 세부의 배달 음식(그랩푸드, 푸드판다) 전문가입니다. 샹그릴라 막탄 리조트에서 19개월 아기와 함께 먹기 좋은 ${cuisine} 배달 음식 3가지를 추천해주세요. 각 메뉴에 대해 음식점 이름, 간단하고 매력적인 설명, 주요 음식 종류를 알려주세요. 응답은 반드시 JSON 객체로만, 그리고 모든 키와 값을 한국어로 작성해주세요.`;
+                const schema = {
+                    type: "ARRAY",
+                    items: {
+                        type: "OBJECT",
+                        properties: {
+                            "이름": { type: "STRING", description: "음식점 이름" },
+                            "설명": { type: "STRING", description: "음식 설명" },
+                            "종류": { type: "STRING", description: "음식 종류" }
+                        },
+                        required: ["이름", "설명", "종류"]
+                    }
+                };
+
+                const recommendations = await callGeminiAPI(prompt, schema);
+                loader.classList.add('hidden');
+
+                if (recommendations) {
+                    resultsContainer.innerHTML = recommendations.map(r => `
+                        <div class="p-4 rounded-lg border border-purple-200 bg-purple-50">
+                            <h5 class="font-bold text-lg text-purple-800">${r['이름']} <span class="text-sm font-medium text-purple-600">(${r['종류']})</span></h5>
+                            <p class="text-gray-700 mt-1">${r['설명']}</p>
+                        </div>
+                    `).join('');
+                } else {
+                    resultsContainer.innerHTML = `<p class="text-center text-red-500">배달 음식 추천에 실패했습니다. 잠시 후 다시 시도해주세요.</p>`;
+                }
+                button.disabled = false;
+            };
+
+            const updateTotals = () => {
+                const { fixed } = APP_DATA.expenses;
+                let fixedTwdTotal = fixed.filter(e => e.currency === 'TWD').reduce((sum, e) => sum + e.amount, 0);
+                let fixedPhpTotal = fixed.filter(e => e.currency === 'PHP').reduce((sum, e) => sum + e.amount, 0);
+
+                const additionalPhpTotal = Array.from(document.querySelectorAll('#additional-expenses-list .expense-item'))
+                    .reduce((sum, item) => sum + parseFloat(item.dataset.amount), 0);
+                
+                const totalPhp = fixedPhpTotal + additionalPhpTotal;
+
+                document.getElementById('total-twd').textContent = `TWD ${fixedTwdTotal.toLocaleString()}`;
+                document.getElementById('total-php').textContent = `+ PHP ${totalPhp.toLocaleString()}`;
+            };
+
+            // --- Event Listeners Setup ---
+            const setupEventListeners = () => {
+                document.body.addEventListener('click', (e) => {
+                    // Modal Trigger
+                    const modalTrigger = e.target.closest('.info-trigger');
+                    if (modalTrigger) {
+                        openModal(modalTrigger.dataset.modalId);
+                        return;
+                    }
+
+                    // Accordion
+                    const accordionHeader = e.target.closest('.accordion-header');
+                    if (accordionHeader) {
+                        accordionHeader.nextElementSibling.classList.toggle('hidden');
+                        accordionHeader.querySelector("span:last-child").classList.toggle("rotate-180");
+                        return;
+                    }
+
+                    // Dining Tabs
+                    const tabButton = e.target.closest('.tab-button');
+                    if (tabButton) {
+                        const isRestaurantTab = tabButton.id === 'tab-restaurant';
+                        document.getElementById('tab-restaurant').classList.toggle('active', isRestaurantTab);
+                        document.getElementById('tab-delivery').classList.toggle('active', !isRestaurantTab);
+                        document.getElementById('content-restaurant').classList.toggle('hidden', !isRestaurantTab);
+                        document.getElementById('content-delivery').classList.toggle('hidden', isRestaurantTab);
+                        return;
+                    }
+
+                    // Checklist
+                    const checklistInput = e.target.closest('.checklist-item input[type="checkbox"]');
+                    if (checklistInput) {
+                        checklistInput.closest('li').classList.toggle('checked', checklistInput.checked);
+                    }
+                    
+                    // AI Buttons
+                    if (e.target.id === 'generate-itinerary-btn') handleGenerateItinerary(e.target);
+                    if (e.target.id === 'generate-dining-btn') handleGenerateDining(e.target);
+                    if (e.target.id === 'generate-delivery-btn') handleGenerateDelivery(e.target);
+
+                    // Expenses
+                    if (e.target.id === 'add-expense-btn') {
+                        const itemInput = document.getElementById('expense-item');
+                        const amountInput = document.getElementById('expense-amount');
+                        const list = document.getElementById('additional-expenses-list');
+                        
+                        const item = itemInput.value.trim();
+                        const amount = parseFloat(amountInput.value);
+
+                        if (item && amount > 0) {
+                            const newExpense = document.createElement('div');
+                            newExpense.className = 'flex justify-between items-center p-2 bg-gray-50 rounded-lg expense-item';
+                            newExpense.dataset.amount = amount;
+                            newExpense.innerHTML = `
+                                <span>${item}</span>
+                                <span class="font-bold">${amount.toLocaleString()} PHP</span>
+                            `;
+                            list.appendChild(newExpense);
+                            itemInput.value = '';
+                            amountInput.value = '';
+                            updateTotals();
+                        }
+                    }
                 });
-            });
+
+                const modal = document.getElementById('info-modal');
+                const modalCloseBtn = document.getElementById('modal-close-btn');
+                const closeModal = () => {
+                    modal.querySelector('.modal-content').classList.add('scale-95');
+                    modal.classList.add('opacity-0');
+                    setTimeout(() => modal.classList.add('hidden'), 300);
+                };
+                modalCloseBtn.addEventListener('click', closeModal);
+                modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+            };
+
+            const openModal = (id) => {
+                const modal = document.getElementById('info-modal');
+                const modalTitle = document.getElementById('modal-title');
+                const modalDetails = document.getElementById('modal-details');
+                const modalSource = document.getElementById('modal-source');
+                const data = APP_DATA.modalData[id];
+                if (data) {
+                    modalTitle.textContent = data.title;
+                    modalDetails.innerHTML = data.details;
+                    modalSource.innerHTML = data.source;
+                    modal.classList.remove('hidden');
+                    setTimeout(() => { 
+                        modal.classList.remove('opacity-0');
+                        modal.querySelector('.modal-content').classList.remove('scale-95');
+                    }, 10);
+                }
+            };
+            
+            // --- INITIALIZE APP ---
+            renderStaticText();
+            renderNavigation();
+            renderPrepSection();
+            renderExpensesSection();
+            renderActivitiesSection();
+            renderDiningSection();
+            renderSafetySection();
+            renderItinerarySection();
+            setupEventListeners();
+
+        } catch (error) {
+            console.error("An error occurred while initializing the application:", error);
+            document.body.innerHTML = `<div class="p-8 text-center text-red-500">페이지를 로드하는 중 오류가 발생했습니다. 죄송합니다.</div>`;
         }
-    
-        // --- Initial Load ---
-        // This ensures static UI is drawn first, then Firebase is initialized.
-        document.addEventListener('DOMContentLoaded', () => {
-            renderStaticUI();
-            initFirebase();
-        });
+    });
     </script>
 </body>
 </html>
